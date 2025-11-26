@@ -223,5 +223,10 @@
     "generation_failed": "Image generation failed: {error}",
     "network_error": "Network error. Please check your connection.",
     "rate_limit": "Rate limit exceeded. Please wait a moment and try again."
+  },
+  "toast": {
+    "image_saved": "Saved: {filename}",
+    "batch_saved": "{count} images saved",
+    "batch_failed": "{count} images failed"
   }
 }

@@ -113,7 +113,7 @@ def render_chat_generation(t: Translator, settings: dict, chat_session: ChatSess
                 ))
 
             if response.error:
-                st.error(f"{t('basic.error')}: {response.error}")
+                st.toast(f"{t('basic.error')}: {response.error}", icon="❌")
                 st.session_state.chat_messages.append({
                     "role": "assistant",
                     "content": f"Error: {response.error}",
@@ -158,6 +158,9 @@ def render_chat_generation(t: Translator, settings: dict, chat_session: ChatSess
                         text_response=response.text,
                         thinking=response.thinking,
                     )
+
+                    # Toast notification for save success
+                    st.toast(t("toast.image_saved", filename=filename), icon="✅")
 
                     st.session_state.history.insert(0, {
                         "prompt": prompt,

@@ -223,5 +223,10 @@
     "generation_failed": "图像生成失败：{error}",
     "network_error": "网络错误，请检查您的网络连接。",
     "rate_limit": "请求频率超限，请稀后再试。"
+  },
+  "toast": {
+    "image_saved": "已保存：{filename}",
+    "batch_saved": "已保存 {count} 张图片",
+    "batch_failed": "{count} 张图片生成失败"
   }
 }

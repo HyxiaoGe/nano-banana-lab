@@ -177,11 +177,15 @@ def render_batch_generation(t: Translator, settings: dict, generator: ImageGener
                         "filename": filename,
                     })
 
+                # Toast notification for batch save success
+                st.toast(t("toast.batch_saved", count=len(successful)), icon="✅")
+
             # Show errors if any
             if failed:
+                st.toast(t("toast.batch_failed", count=len(failed)), icon="⚠️")
                 with st.expander(t("batch.errors"), expanded=False):
                     for idx, result in enumerate(failed):
-                        st.error(f"Image {idx + 1}: {result.error}")
+                        st.write(f"Image {idx + 1}: {result.error}")
 
             # Download all as ZIP
             if len(successful) > 1:

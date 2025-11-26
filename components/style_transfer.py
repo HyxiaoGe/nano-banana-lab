@@ -82,7 +82,7 @@ def render_style_transfer_mode(t: Translator, settings: dict, generator: ImageGe
                 ))
 
             if result.error:
-                st.error(f"{t('basic.error')}: {result.error}")
+                st.toast(f"{t('basic.error')}: {result.error}", icon="❌")
             elif result.image:
                 st.subheader(t("basic.result"))
                 st.image(result.image, use_container_width=True)
@@ -116,6 +116,9 @@ def render_style_transfer_mode(t: Translator, settings: dict, generator: ImageGe
                     mode="style",
                     text_response=result.text,
                 )
+
+                # Toast notification for save success
+                st.toast(t("toast.image_saved", filename=filename), icon="✅")
 
                 st.session_state.history.insert(0, {
                     "prompt": prompt,
@@ -173,7 +176,7 @@ def render_blend_mode(t: Translator, settings: dict, generator: ImageGenerator):
                 ))
 
             if result.error:
-                st.error(f"{t('basic.error')}: {result.error}")
+                st.toast(f"{t('basic.error')}: {result.error}", icon="❌")
             elif result.image:
                 st.subheader(t("basic.result"))
                 st.image(result.image, use_container_width=True)
@@ -207,6 +210,9 @@ def render_blend_mode(t: Translator, settings: dict, generator: ImageGenerator):
                     mode="blend",
                     text_response=result.text,
                 )
+
+                # Toast notification for save success
+                st.toast(t("toast.image_saved", filename=filename), icon="✅")
 
                 st.session_state.history.insert(0, {
                     "prompt": prompt,
