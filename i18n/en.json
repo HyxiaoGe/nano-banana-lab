@@ -51,6 +51,12 @@
         "none": "None - No filtering (use with caution)"
       }
     },
+    "health": {
+      "title": "API Status",
+      "check_btn": "Check API Status",
+      "checking": "Checking API...",
+      "last_check": "Last checked"
+    },
     "stats": "Statistics",
     "about": "About",
     "about_text": "A learning project for exploring Google Gemini Pro Image capabilities."

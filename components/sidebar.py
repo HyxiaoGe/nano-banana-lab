@@ -2,9 +2,10 @@
 Sidebar component with settings and configuration.
 """
 import os
+import time
 import streamlit as st
 from i18n import LANGUAGES, Translator
-from services import get_persistence
+from services import get_persistence, HealthCheckService
 
 
 def render_api_key_section(t: Translator) -> bool:
@@ -88,6 +89,51 @@ def render_api_key_section(t: Translator) -> bool:
     return st.session_state.api_key_valid
 
 
+def render_health_check_section(t: Translator, api_key: str):
+    """
+    Render the API health check status section.
+
+    Args:
+        t: Translator instance
+        api_key: Current API key to check
+    """
+    if not api_key:
+        return
+
+    HealthCheckService.init_session_state()
+
+    # Get current status
+    emoji, status_text = HealthCheckService.get_status_indicator()
+    result = HealthCheckService.get_last_result()
+
+    # Display status with check button
+    col1, col2 = st.columns([3, 1])
+
+    with col1:
+        st.caption(f"{t('sidebar.health.title')}: {emoji} {status_text}")
+
+    with col2:
+        # Manual check button
+        if st.button("🔄", key="health_check_btn", help=t("sidebar.health.check_btn")):
+            with st.spinner(t("sidebar.health.checking")):
+                HealthCheckService.run_check(api_key)
+            st.rerun()
+
+    # Auto-check if enough time has passed
+    if HealthCheckService.should_check() and not HealthCheckService.is_checking():
+        # Run health check in background (will update on next rerun)
+        HealthCheckService.run_check(api_key)
+
+    # Show last check time
+    if result.timestamp > 0:
+        elapsed = time.time() - result.timestamp
+        if elapsed < 60:
+            time_ago = f"{int(elapsed)}s"
+        else:
+            time_ago = f"{int(elapsed / 60)}m"
+        st.caption(f"_{t('sidebar.health.last_check')}: {time_ago} ago_")
+
+
 def get_current_api_key() -> str:
     """Get the current API key from session state or environment."""
     if st.session_state.get("user_api_key"):
@@ -110,6 +156,10 @@ def render_sidebar(t: Translator) -> dict:
 
         # API Key section
         api_key_valid = render_api_key_section(t)
+
+        # Health check section (only show if API key is valid)
+        if api_key_valid:
+            render_health_check_section(t, get_current_api_key())
 
         st.divider()
 
