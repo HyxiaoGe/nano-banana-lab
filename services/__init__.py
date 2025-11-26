@@ -14,6 +14,12 @@ from .generation_state import (
     get_throttle_remaining,
 )
 from .history_sync import HistorySyncManager, get_history_sync
+from .health_check import (
+    HealthCheckService,
+    HealthCheckResult,
+    HealthStatus,
+    get_health_service,
+)
 
 __all__ = [
     "ImageGenerator",
@@ -35,4 +41,8 @@ __all__ = [
     "get_throttle_remaining",
     "HistorySyncManager",
     "get_history_sync",
+    "HealthCheckService",
+    "HealthCheckResult",
+    "HealthStatus",
+    "get_health_service",
 ]

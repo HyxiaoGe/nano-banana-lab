@@ -51,6 +51,12 @@
         "none": "无过滤 - 无任何过滤（谨慎使用）"
       }
     },
+    "health": {
+      "title": "API 状态",
+      "check_btn": "检查 API 状态",
+      "checking": "检查中...",
+      "last_check": "上次检查"
+    },
     "stats": "统计信息",
     "about": "关于",
     "about_text": "一个用于探索 Google Gemini Pro Image 能力的学习项目。"
