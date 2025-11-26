@@ -60,12 +60,12 @@ def render_api_key_section(t: Translator) -> bool:
                         st.session_state.api_key_valid = True
                         st.session_state.api_key_source = "user"
                         st.session_state.api_key_changed = True
-                        st.success(t("sidebar.api_key.valid"))
+                        st.toast(t("sidebar.api_key.valid"), icon="✅")
                         st.rerun()
                     else:
-                        st.error(f"{t('sidebar.api_key.invalid')}: {message}")
+                        st.toast(f"{t('sidebar.api_key.invalid')}: {message}", icon="❌")
                 else:
-                    st.warning(t("sidebar.api_key.empty"))
+                    st.toast(t("sidebar.api_key.empty"), icon="⚠️")
 
         with col2:
             if st.button(t("sidebar.api_key.clear_btn"), use_container_width=True):

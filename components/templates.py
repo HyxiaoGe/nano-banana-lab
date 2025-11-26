@@ -151,7 +151,7 @@ def render_templates(t: Translator, settings: dict, generator: ImageGenerator):
                 ))
 
             if result.error:
-                st.error(f"{t('basic.error')}: {result.error}")
+                st.toast(f"{t('basic.error')}: {result.error}", icon="❌")
             elif result.image:
                 st.subheader(t("basic.result"))
 
@@ -193,6 +193,9 @@ def render_templates(t: Translator, settings: dict, generator: ImageGenerator):
                     thinking=result.thinking,
                 )
 
+                # Toast notification for save success
+                st.toast(t("toast.image_saved", filename=filename), icon="✅")
+
                 st.session_state.history.insert(0, {
                     "prompt": final_prompt,
                     "image": result.image,
@@ -203,4 +206,4 @@ def render_templates(t: Translator, settings: dict, generator: ImageGenerator):
                     "filename": filename,
                 })
             else:
-                st.warning(t("basic.no_image"))
+                st.toast(t("basic.no_image"), icon="⚠️")
