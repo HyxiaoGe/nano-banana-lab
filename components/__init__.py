@@ -8,6 +8,7 @@ from .history import render_history
 from .style_transfer import render_style_transfer
 from .search_generation import render_search_generation
 from .templates import render_templates
+from .batch_generation import render_batch_generation
 
 __all__ = [
     "render_sidebar",
@@ -17,4 +18,5 @@ __all__ = [
     "render_style_transfer",
     "render_search_generation",
     "render_templates",
+    "render_batch_generation",
 ]

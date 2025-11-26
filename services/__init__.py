@@ -3,5 +3,13 @@ Services module for Nano Banana Lab.
 """
 from .generator import ImageGenerator
 from .chat_session import ChatSession
+from .cost_estimator import estimate_cost, format_cost, get_pricing_table, CostEstimate
 
-__all__ = ["ImageGenerator", "ChatSession"]
+__all__ = [
+    "ImageGenerator",
+    "ChatSession",
+    "estimate_cost",
+    "format_cost",
+    "get_pricing_table",
+    "CostEstimate",
+]

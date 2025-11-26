@@ -26,6 +26,7 @@ from components import (
     render_style_transfer,
     render_search_generation,
     render_templates,
+    render_batch_generation,
 )
 from services import ImageGenerator, ChatSession
 
@@ -88,6 +89,8 @@ def main():
         render_basic_generation(t, settings, generator)
     elif mode == "chat":
         render_chat_generation(t, settings, chat_session)
+    elif mode == "batch":
+        render_batch_generation(t, settings, generator)
     elif mode == "blend":
         render_style_transfer(t, settings, generator)
     elif mode == "search":

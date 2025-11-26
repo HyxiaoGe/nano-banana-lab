@@ -11,6 +11,7 @@
     "modes": {
       "basic": "基础生图",
       "chat": "对话微调",
+      "batch": "批量生成",
       "blend": "风格迁移",
       "search": "搜索增强",
       "templates": "模板库",
@@ -72,6 +73,26 @@
         "试试：'让它看起来更真实'"
       ]
     }
+  },
+  "batch": {
+    "title": "批量生成",
+    "description": "从单个提示词生成多个图像变体。非常适合探索不同的创意表现。",
+    "prompt_label": "输入提示词",
+    "prompt_placeholder": "描述你想生成多个变体的图像...",
+    "count_label": "生成数量",
+    "cost_label": "预估成本",
+    "images": "张图像",
+    "variation_hint": "每次生成都会产生对提示词的独特诠释。",
+    "generating": "正在生成图像...",
+    "progress_text": "正在生成第 {current} 张，共 {total} 张...",
+    "complete": "生成完成！",
+    "results": "生成的图像",
+    "successful": "成功",
+    "failed": "失败",
+    "total_time": "总耗时",
+    "errors": "错误详情",
+    "download_all": "下载全部",
+    "download_zip": "下载为 ZIP"
   },
   "blend": {
     "title": "风格迁移与图像混合",
@@ -183,6 +204,6 @@
     "api_key_missing": "未配置 API 密钥，请在 .env 文件中设置 GOOGLE_API_KEY。",
     "generation_failed": "图像生成失败：{error}",
     "network_error": "网络错误，请检查您的网络连接。",
-    "rate_limit": "请求频率超限，请稍后再试。"
+    "rate_limit": "请求频率超限，请稀后再试。"
   }
 }
