@@ -135,7 +135,7 @@ def render_history(t: Translator):
                         if "/" in filename:
                             filename = filename.split("/")[-1]
                         st.download_button(
-                            t("history.download_btn"),
+                            f"⬇️ {t('history.download_btn')}",
                             data=buf.getvalue(),
                             file_name=filename,
                             mime="image/png",
