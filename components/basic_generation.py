@@ -101,29 +101,28 @@ def render_basic_generation(t: Translator, settings: dict, generator: ImageGener
                 with st.expander(t("basic.thinking_label"), expanded=False):
                     st.write(result.thinking)
 
-            # Show image
+            # Show image in a container with action bar below
             st.image(result.image, use_container_width=True)
 
-            # Show text response
-            if result.text:
-                with st.expander(t("basic.response_label"), expanded=True):
-                    st.write(result.text)
-
-            # Show timing and download
-            col1, col2, col3 = st.columns([2, 2, 1])
+            # Action bar: timing info and download button in a clean row
+            col1, col2 = st.columns([3, 1])
             with col1:
-                st.caption(f"{t('basic.time_label')}: {result.duration:.2f} {t('basic.seconds')}")
-
-            with col3:
-                # Download button with descriptive filename
+                st.caption(f"⏱️ {t('basic.time_label')}: {result.duration:.2f} {t('basic.seconds')}")
+            with col2:
                 buf = BytesIO()
                 result.image.save(buf, format="PNG")
                 st.download_button(
-                    t("basic.download_btn"),
+                    f"⬇️ {t('basic.download_btn')}",
                     data=buf.getvalue(),
-                    file_name=filename,  # Use the saved filename
-                    mime="image/png"
+                    file_name=filename,
+                    mime="image/png",
+                    use_container_width=True
                 )
+
+            # Show text response
+            if result.text:
+                with st.expander(t("basic.response_label"), expanded=False):
+                    st.write(result.text)
         else:
             st.toast(t("basic.no_image"), icon="⚠️")
 
@@ -138,24 +137,24 @@ def render_basic_generation(t: Translator, settings: dict, generator: ImageGener
 
         st.image(last["image"], use_container_width=True)
 
-        if last.get("text"):
-            with st.expander(t("basic.response_label"), expanded=True):
-                st.write(last["text"])
-
-        col1, col2, col3 = st.columns([2, 2, 1])
+        # Action bar: timing info and download button
+        col1, col2 = st.columns([3, 1])
         with col1:
-            st.caption(f"{t('basic.time_label')}: {last['duration']:.2f} {t('basic.seconds')}")
-
-        with col3:
+            st.caption(f"⏱️ {t('basic.time_label')}: {last['duration']:.2f} {t('basic.seconds')}")
+        with col2:
             buf = BytesIO()
             last["image"].save(buf, format="PNG")
-            # Use stored filename or generate one
             download_name = last.get("filename", "generated_image.png")
             if "/" in download_name:
                 download_name = download_name.split("/")[-1]
             st.download_button(
-                t("basic.download_btn"),
+                f"⬇️ {t('basic.download_btn')}",
                 data=buf.getvalue(),
                 file_name=download_name,
-                mime="image/png"
+                mime="image/png",
+                use_container_width=True
             )
+
+        if last.get("text"):
+            with st.expander(t("basic.response_label"), expanded=False):
+                st.write(last["text"])

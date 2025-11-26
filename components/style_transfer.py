@@ -94,15 +94,16 @@ def render_style_transfer_mode(t: Translator, settings: dict, generator: ImageGe
 
                 col1, col2 = st.columns([3, 1])
                 with col1:
-                    st.caption(f"{t('basic.time_label')}: {result.duration:.2f} {t('basic.seconds')}")
+                    st.caption(f"⏱️ {t('basic.time_label')}: {result.duration:.2f} {t('basic.seconds')}")
                 with col2:
                     buf = BytesIO()
                     result.image.save(buf, format="PNG")
                     st.download_button(
-                        t("basic.download_btn"),
+                        f"⬇️ {t('basic.download_btn')}",
                         data=buf.getvalue(),
                         file_name="style_transfer.png",
-                        mime="image/png"
+                        mime="image/png",
+                        use_container_width=True
                     )
 
                 # Add to history and save to disk
@@ -190,15 +191,16 @@ def render_blend_mode(t: Translator, settings: dict, generator: ImageGenerator):
 
                 col1, col2 = st.columns([3, 1])
                 with col1:
-                    st.caption(f"{t('basic.time_label')}: {result.duration:.2f} {t('basic.seconds')}")
+                    st.caption(f"⏱️ {t('basic.time_label')}: {result.duration:.2f} {t('basic.seconds')}")
                 with col2:
                     buf = BytesIO()
                     result.image.save(buf, format="PNG")
                     st.download_button(
-                        t("basic.download_btn"),
+                        f"⬇️ {t('basic.download_btn')}",
                         data=buf.getvalue(),
                         file_name="blended_image.png",
-                        mime="image/png"
+                        mime="image/png",
+                        use_container_width=True
                     )
 
                 # Add to history and save to disk

@@ -147,7 +147,7 @@ def render_batch_generation(t: Translator, settings: dict, generator: ImageGener
                         buf = BytesIO()
                         result.image.save(buf, format="PNG")
                         st.download_button(
-                            f"{t('basic.download_btn')} {idx + 1}",
+                            f"⬇️ #{idx + 1}",
                             data=buf.getvalue(),
                             file_name=f"batch_{idx + 1}.png",
                             mime="image/png",

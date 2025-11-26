@@ -75,15 +75,16 @@ def render_chat_generation(t: Translator, settings: dict, chat_session: ChatSess
             if message.get("image"):
                 st.image(message["image"], use_container_width=True)
 
-                # Download button
+                # Download button - compact style
                 buf = BytesIO()
                 message["image"].save(buf, format="PNG")
                 st.download_button(
-                    t("history.download_btn"),
+                    f"⬇️ {t('history.download_btn')}",
                     data=buf.getvalue(),
-                    file_name=f"chat_image_{idx}.png",
+                    file_name=f"chat_{idx + 1}.png",
                     mime="image/png",
-                    key=f"download_chat_{idx}"
+                    key=f"download_chat_{idx}",
+                    use_container_width=False
                 )
 
     # Chat input
@@ -133,15 +134,16 @@ def render_chat_generation(t: Translator, settings: dict, chat_session: ChatSess
                 if response.image:
                     st.image(response.image, use_container_width=True)
 
-                    # Download button
+                    # Download button - compact style
                     buf = BytesIO()
                     response.image.save(buf, format="PNG")
                     st.download_button(
-                        t("history.download_btn"),
+                        f"⬇️ {t('history.download_btn')}",
                         data=buf.getvalue(),
-                        file_name=f"chat_image_{len(st.session_state.chat_messages)}.png",
+                        file_name=f"chat_{len(st.session_state.chat_messages) + 1}.png",
                         mime="image/png",
-                        key=f"download_chat_new"
+                        key=f"download_chat_new",
+                        use_container_width=False
                     )
 
                 # Store in history
