@@ -51,7 +51,7 @@ def render_search_generation(t: Translator, settings: dict, generator: ImageGene
                 ))
 
             if result.error:
-                st.error(f"{t('basic.error')}: {result.error}")
+                st.toast(f"{t('basic.error')}: {result.error}", icon="❌")
             elif result.image:
                 st.subheader(t("basic.result"))
                 st.image(result.image, use_container_width=True)
@@ -94,6 +94,9 @@ def render_search_generation(t: Translator, settings: dict, generator: ImageGene
                     text_response=result.text,
                 )
 
+                # Toast notification for save success
+                st.toast(t("toast.image_saved", filename=filename), icon="✅")
+
                 st.session_state.history.insert(0, {
                     "prompt": prompt,
                     "image": result.image,
@@ -103,4 +106,4 @@ def render_search_generation(t: Translator, settings: dict, generator: ImageGene
                     "filename": filename,
                 })
             else:
-                st.warning(t("basic.no_image"))
+                st.toast(t("basic.no_image"), icon="⚠️")

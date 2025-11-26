@@ -60,7 +60,7 @@ def render_basic_generation(t: Translator, settings: dict, generator: ImageGener
             ))
 
         if result.error:
-            st.error(f"{t('basic.error')}: {result.error}")
+            st.toast(f"{t('basic.error')}: {result.error}", icon="❌")
         elif result.image:
             # Save to disk
             storage = get_storage()
@@ -73,6 +73,9 @@ def render_basic_generation(t: Translator, settings: dict, generator: ImageGener
                 text_response=result.text,
                 thinking=result.thinking,
             )
+
+            # Toast notification for save success
+            st.toast(t("toast.image_saved", filename=filename), icon="✅")
 
             # Store in session for history
             if "history" not in st.session_state:
@@ -120,7 +123,7 @@ def render_basic_generation(t: Translator, settings: dict, generator: ImageGener
                     mime="image/png"
                 )
         else:
-            st.warning(t("basic.no_image"))
+            st.toast(t("basic.no_image"), icon="⚠️")
 
     # Show last generated image if exists
     elif "history" in st.session_state and st.session_state.history:
