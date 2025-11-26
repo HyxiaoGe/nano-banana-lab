@@ -11,6 +11,7 @@
     "modes": {
       "basic": "Basic Generation",
       "chat": "Chat & Refine",
+      "batch": "Batch Generation",
       "blend": "Style Transfer",
       "search": "Search Grounding",
       "templates": "Templates",
@@ -72,6 +73,26 @@
         "Try: 'Make it look more realistic'"
       ]
     }
+  },
+  "batch": {
+    "title": "Batch Generation",
+    "description": "Generate multiple image variations from a single prompt. Great for exploring different interpretations.",
+    "prompt_label": "Enter your prompt",
+    "prompt_placeholder": "Describe the image you want to generate multiple variations of...",
+    "count_label": "Number of images",
+    "cost_label": "Estimated Cost",
+    "images": "images",
+    "variation_hint": "Each generation will produce a unique interpretation of your prompt.",
+    "generating": "Generating images...",
+    "progress_text": "Generating image {current} of {total}...",
+    "complete": "Generation complete!",
+    "results": "Generated Images",
+    "successful": "Successful",
+    "failed": "Failed",
+    "total_time": "Total Time",
+    "errors": "Errors",
+    "download_all": "Download All",
+    "download_zip": "Download as ZIP"
   },
   "blend": {
     "title": "Style Transfer & Image Blending",
