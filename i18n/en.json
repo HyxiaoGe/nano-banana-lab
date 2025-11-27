@@ -238,7 +238,15 @@
     "count": "{count} images",
     "yes_btn": "Yes",
     "no_btn": "No",
-    "cleared": "History cleared"
+    "cleared": "History cleared",
+    "search_placeholder": "Search by prompt...",
+    "filter_mode": "Filter by mode",
+    "filter_all": "All",
+    "page_info": "Page {current} of {total}",
+    "per_page": "Per page",
+    "no_results": "No images match your search criteria.",
+    "prev_btn": "Previous",
+    "next_btn": "Next"
   },
   "errors": {
     "api_key_missing": "API key not configured. Please set GOOGLE_API_KEY in your .env file.",
@@ -246,7 +254,17 @@
     "api_key_help": "Please configure your API key in the sidebar to start generating images.",
     "generation_failed": "Image generation failed: {error}",
     "network_error": "Network error. Please check your connection.",
-    "rate_limit": "Rate limit exceeded. Please wait a moment and try again."
+    "rate_limit": "Rate limit exceeded. Please wait a moment and try again.",
+    "api": {
+      "overloaded": "Model is busy, please try again later",
+      "unavailable": "Service temporarily unavailable, please try again later",
+      "timeout": "Request timed out, please try again",
+      "rate_limited": "API quota exhausted or requests too frequent",
+      "invalid_key": "Invalid API key, please check your configuration",
+      "safety_blocked": "Content blocked by safety filter",
+      "connection": "Network connection error, please try again",
+      "unknown": "An unexpected error occurred"
+    }
   },
   "toast": {
     "image_saved": "Saved: {filename}",

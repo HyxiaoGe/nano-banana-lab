@@ -238,7 +238,15 @@
     "count": "{count} 张图片",
     "yes_btn": "是",
     "no_btn": "否",
-    "cleared": "历史已清空"
+    "cleared": "历史已清空",
+    "search_placeholder": "搜索提示词...",
+    "filter_mode": "按模式筛选",
+    "filter_all": "全部",
+    "page_info": "第 {current} 页，共 {total} 页",
+    "per_page": "每页显示",
+    "no_results": "没有找到匹配的图片。",
+    "prev_btn": "上一页",
+    "next_btn": "下一页"
   },
   "errors": {
     "api_key_missing": "未配置 API 密钥，请在 .env 文件中设置 GOOGLE_API_KEY。",
@@ -246,7 +254,17 @@
     "api_key_help": "请在侧边栏配置您的 API 密钥以开始生成图像。",
     "generation_failed": "图像生成失败：{error}",
     "network_error": "网络错误，请检查您的网络连接。",
-    "rate_limit": "请求频率超限，请稀后再试。"
+    "rate_limit": "请求频率超限，请稀后再试。",
+    "api": {
+      "overloaded": "模型繁忙，请稍后重试",
+      "unavailable": "服务暂时不可用，请稍后重试",
+      "timeout": "请求超时，请重试",
+      "rate_limited": "API 配额已用尽或请求过快",
+      "invalid_key": "API 密钥无效，请检查配置",
+      "safety_blocked": "内容被安全过滤器拦截",
+      "connection": "网络连接异常，请重试",
+      "unknown": "发生未知错误"
+    }
   },
   "toast": {
     "image_saved": "已保存：{filename}",

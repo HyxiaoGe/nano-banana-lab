@@ -4,7 +4,7 @@ Image Generator Service using Google GenAI.
 import os
 import time
 import logging
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Callable, Any
 from dataclasses import dataclass
 from PIL import Image
 from io import BytesIO
@@ -52,6 +52,16 @@ RETRYABLE_ERRORS = [
     "504",
 ]
 
+# Error type constants for i18n mapping
+ERROR_TYPE_OVERLOADED = "overloaded"
+ERROR_TYPE_UNAVAILABLE = "unavailable"
+ERROR_TYPE_TIMEOUT = "timeout"
+ERROR_TYPE_RATE_LIMITED = "rate_limited"
+ERROR_TYPE_INVALID_KEY = "invalid_key"
+ERROR_TYPE_SAFETY_BLOCKED = "safety_blocked"
+ERROR_TYPE_CONNECTION = "connection"
+ERROR_TYPE_UNKNOWN = "unknown"
+
 
 def is_retryable_error(error_msg: str) -> bool:
     """Check if an error is retryable based on error message."""
@@ -59,27 +69,70 @@ def is_retryable_error(error_msg: str) -> bool:
     return any(keyword in error_lower for keyword in RETRYABLE_ERRORS)
 
 
-def get_friendly_error_message(error_msg: str) -> str:
-    """Convert technical error messages to user-friendly messages."""
+def classify_error(error_msg: str) -> str:
+    """
+    Classify error message into error type for i18n lookup.
+
+    Returns:
+        Error type constant string for i18n key mapping
+    """
     error_lower = error_msg.lower()
 
     if "overloaded" in error_lower or ("503" in error_lower and "unavailable" in error_lower):
-        return "模型繁忙，请稍后重试 (Model overloaded)"
+        return ERROR_TYPE_OVERLOADED
     elif "503" in error_lower or "unavailable" in error_lower:
-        return "服务暂时不可用，请稍后重试 (Service unavailable)"
+        return ERROR_TYPE_UNAVAILABLE
     elif "timeout" in error_lower:
-        return "请求超时，请重试 (Request timeout)"
+        return ERROR_TYPE_TIMEOUT
     elif "quota" in error_lower or "rate" in error_lower:
-        return "API 配额已用尽或请求过快 (Rate limited)"
+        return ERROR_TYPE_RATE_LIMITED
     elif "api_key" in error_lower or "invalid" in error_lower:
-        return "API Key 无效，请检查配置 (Invalid API key)"
+        return ERROR_TYPE_INVALID_KEY
     elif "safety" in error_lower or "blocked" in error_lower:
-        return "内容被安全过滤器拦截 (Blocked by safety filter)"
+        return ERROR_TYPE_SAFETY_BLOCKED
     elif "server disconnected" in error_lower or "connection" in error_lower:
-        return "网络连接异常，请重试 (Connection error)"
+        return ERROR_TYPE_CONNECTION
     else:
-        # Return original message if no match, but truncate if too long
-        return error_msg[:200] if len(error_msg) > 200 else error_msg
+        return ERROR_TYPE_UNKNOWN
+
+
+def get_friendly_error_message(error_msg: str, translator=None) -> str:
+    """
+    Convert technical error messages to user-friendly messages.
+
+    Args:
+        error_msg: The technical error message
+        translator: Optional Translator instance for i18n support
+
+    Returns:
+        User-friendly error message
+    """
+    error_type = classify_error(error_msg)
+
+    # If translator is provided, use i18n
+    if translator:
+        i18n_key = f"errors.api.{error_type}"
+        translated = translator.get(i18n_key)
+        # If key exists and is not the key itself, return translated message
+        if translated != i18n_key:
+            return translated
+
+    # Fallback to hardcoded bilingual messages
+    fallback_messages = {
+        ERROR_TYPE_OVERLOADED: "模型繁忙，请稍后重试 (Model overloaded)",
+        ERROR_TYPE_UNAVAILABLE: "服务暂时不可用，请稍后重试 (Service unavailable)",
+        ERROR_TYPE_TIMEOUT: "请求超时，请重试 (Request timeout)",
+        ERROR_TYPE_RATE_LIMITED: "API 配额已用尽或请求过快 (Rate limited)",
+        ERROR_TYPE_INVALID_KEY: "API Key 无效，请检查配置 (Invalid API key)",
+        ERROR_TYPE_SAFETY_BLOCKED: "内容被安全过滤器拦截 (Blocked by safety filter)",
+        ERROR_TYPE_CONNECTION: "网络连接异常，请重试 (Connection error)",
+    }
+
+    if error_type in fallback_messages:
+        return fallback_messages[error_type]
+
+    # Return original message if no match, but truncate if too long
+    return error_msg[:200] if len(error_msg) > 200 else error_msg
 
 
 def build_safety_settings(level: str = "moderate") -> List[types.SafetySetting]:
@@ -171,6 +224,125 @@ class ImageGenerator:
             else:
                 return False, f"Validation failed: {error_msg[:100]}"
 
+    def _execute_with_retry(
+        self,
+        api_call: Callable[[], Any],
+        result: GenerationResult,
+        start_time: float,
+    ) -> Tuple[Any, Optional[str]]:
+        """
+        Execute an API call with retry logic.
+
+        Args:
+            api_call: Callable that makes the API request
+            result: GenerationResult to update on safety errors
+            start_time: Start timestamp for duration calculation
+
+        Returns:
+            Tuple of (response, last_error) - response is None if all retries failed
+        """
+        last_error = None
+
+        for attempt in range(MAX_RETRIES + 1):
+            try:
+                response = api_call()
+                return response, None
+
+            except Exception as e:
+                error_msg = str(e)
+                last_error = error_msg
+
+                # Check if error is safety related (no retry)
+                if "safety" in error_msg.lower() or "blocked" in error_msg.lower():
+                    result.safety_blocked = True
+                    result.error = "Content blocked by safety filter"
+                    result.duration = time.time() - start_time
+                    return None, error_msg
+
+                # Check if error is retryable
+                if is_retryable_error(error_msg) and attempt < MAX_RETRIES:
+                    delay = RETRY_DELAYS[attempt]
+                    logger.warning(
+                        f"Retryable error on attempt {attempt + 1}: {error_msg}. "
+                        f"Retrying in {delay}s..."
+                    )
+                    time.sleep(delay)
+                    continue
+
+                # Non-retryable error or max retries reached
+                break
+
+        return None, last_error
+
+    def _process_response(
+        self,
+        response: Any,
+        result: GenerationResult,
+        extract_search: bool = False,
+    ) -> bool:
+        """
+        Process API response and extract data into result.
+
+        Args:
+            response: API response object
+            result: GenerationResult to populate
+            extract_search: Whether to extract search grounding metadata
+
+        Returns:
+            True if response was successfully processed, False if safety blocked
+        """
+        if not response.candidates:
+            return True
+
+        candidate = response.candidates[0]
+
+        # Extract safety ratings
+        if hasattr(candidate, 'safety_ratings') and candidate.safety_ratings:
+            result.safety_ratings = [
+                {"category": str(r.category), "probability": str(r.probability)}
+                for r in candidate.safety_ratings
+            ]
+
+        # Check if blocked by safety filter
+        if hasattr(candidate, 'finish_reason') and str(candidate.finish_reason) == "SAFETY":
+            result.safety_blocked = True
+            result.error = "Content blocked by safety filter"
+            return False
+
+        # Process response parts
+        if hasattr(candidate, 'content') and candidate.content:
+            for part in candidate.content.parts:
+                if hasattr(part, 'thought') and part.thought:
+                    result.thinking = part.text
+                elif hasattr(part, 'text') and part.text:
+                    result.text = part.text
+                elif hasattr(part, 'inline_data') and part.inline_data:
+                    image_data = part.inline_data.data
+                    result.image = Image.open(BytesIO(image_data))
+
+        # Extract search sources if requested
+        if extract_search and hasattr(candidate, 'grounding_metadata') and candidate.grounding_metadata:
+            metadata = candidate.grounding_metadata
+            if hasattr(metadata, 'search_entry_point') and metadata.search_entry_point:
+                result.search_sources = metadata.search_entry_point.rendered_content
+
+        return True
+
+    def _record_stats(self, duration: float):
+        """Record generation statistics."""
+        self.stats.append({
+            "duration": duration,
+            "timestamp": time.time()
+        })
+
+    def get_stats_summary(self) -> str:
+        """Get summary of generation statistics."""
+        if not self.stats:
+            return "No generations recorded."
+        total = sum(s["duration"] for s in self.stats)
+        avg = total / len(self.stats)
+        return f"Generations: {len(self.stats)} | Total: {total:.2f}s | Avg: {avg:.2f}s"
+
     def generate(
         self,
         prompt: str,
@@ -196,9 +368,8 @@ class ImageGenerator:
         """
         start_time = time.time()
         result = GenerationResult()
-        last_error = None
 
-        # Build config once
+        # Build config
         config_dict = {
             "response_modalities": ["Text", "Image"],
             "image_config": {
@@ -217,91 +388,31 @@ class ImageGenerator:
 
         config = types.GenerateContentConfig(**config_dict)
 
-        # Retry loop
-        for attempt in range(MAX_RETRIES + 1):
-            try:
-                # Make sync API call
-                response = self.client.models.generate_content(
-                    model=self.MODEL_ID,
-                    contents=prompt,
-                    config=config,
-                )
+        # Define API call
+        def api_call():
+            return self.client.models.generate_content(
+                model=self.MODEL_ID,
+                contents=prompt,
+                config=config,
+            )
 
-                # Check for safety blocks
-                if response.candidates:
-                    candidate = response.candidates[0]
+        # Execute with retry
+        response, last_error = self._execute_with_retry(api_call, result, start_time)
 
-                    # Get safety ratings
-                    if hasattr(candidate, 'safety_ratings') and candidate.safety_ratings:
-                        result.safety_ratings = [
-                            {"category": str(r.category), "probability": str(r.probability)}
-                            for r in candidate.safety_ratings
-                        ]
+        if response is None:
+            if not result.error:  # Not a safety error
+                result.error = last_error
+            result.duration = time.time() - start_time
+            return result
 
-                    # Check if blocked by safety filter
-                    if hasattr(candidate, 'finish_reason'):
-                        if str(candidate.finish_reason) == "SAFETY":
-                            result.safety_blocked = True
-                            result.error = "Content blocked by safety filter"
-                            result.duration = time.time() - start_time
-                            return result
+        # Process response
+        if not self._process_response(response, result):
+            result.duration = time.time() - start_time
+            return result
 
-                    # Process response parts
-                    if hasattr(candidate, 'content') and candidate.content:
-                        for part in candidate.content.parts:
-                            if hasattr(part, 'thought') and part.thought:
-                                result.thinking = part.text
-                            elif hasattr(part, 'text') and part.text:
-                                result.text = part.text
-                            elif hasattr(part, 'inline_data') and part.inline_data:
-                                # Convert to PIL Image
-                                image_data = part.inline_data.data
-                                result.image = Image.open(BytesIO(image_data))
-
-                result.duration = time.time() - start_time
-                self._record_stats(result.duration)
-                return result  # Success, return immediately
-
-            except Exception as e:
-                error_msg = str(e)
-                last_error = error_msg
-
-                # Check if error is safety related (no retry)
-                if "safety" in error_msg.lower() or "blocked" in error_msg.lower():
-                    result.safety_blocked = True
-                    result.error = "Content blocked by safety filter"
-                    result.duration = time.time() - start_time
-                    return result
-
-                # Check if error is retryable
-                if is_retryable_error(error_msg) and attempt < MAX_RETRIES:
-                    delay = RETRY_DELAYS[attempt]
-                    logger.warning(f"Retryable error on attempt {attempt + 1}: {error_msg}. Retrying in {delay}s...")
-                    time.sleep(delay)
-                    continue
-
-                # Non-retryable error or max retries reached
-                break
-
-        # All retries failed
-        result.error = last_error
         result.duration = time.time() - start_time
+        self._record_stats(result.duration)
         return result
-
-    def _record_stats(self, duration: float):
-        """Record generation statistics."""
-        self.stats.append({
-            "duration": duration,
-            "timestamp": time.time()
-        })
-
-    def get_stats_summary(self) -> str:
-        """Get summary of generation statistics."""
-        if not self.stats:
-            return "No generations recorded."
-        total = sum(s["duration"] for s in self.stats)
-        avg = total / len(self.stats)
-        return f"Generations: {len(self.stats)} | Total: {total:.2f}s | Avg: {avg:.2f}s"
 
     def blend_images(
         self,
@@ -324,13 +435,12 @@ class ImageGenerator:
         """
         start_time = time.time()
         result = GenerationResult()
-        last_error = None
 
         if not images:
             result.error = "No images provided for blending"
             return result
 
-        # Build contents and config once
+        # Build contents and config
         contents = [prompt] + images
         config = types.GenerateContentConfig(
             response_modalities=["Text", "Image"],
@@ -340,64 +450,30 @@ class ImageGenerator:
             safety_settings=build_safety_settings(safety_level),
         )
 
-        # Retry loop
-        for attempt in range(MAX_RETRIES + 1):
-            try:
-                # Make sync API call
-                response = self.client.models.generate_content(
-                    model=self.MODEL_ID,
-                    contents=contents,
-                    config=config,
-                )
+        # Define API call
+        def api_call():
+            return self.client.models.generate_content(
+                model=self.MODEL_ID,
+                contents=contents,
+                config=config,
+            )
 
-                # Check for safety blocks and process response
-                if response.candidates:
-                    candidate = response.candidates[0]
+        # Execute with retry
+        response, last_error = self._execute_with_retry(api_call, result, start_time)
 
-                    if hasattr(candidate, 'safety_ratings') and candidate.safety_ratings:
-                        result.safety_ratings = [
-                            {"category": str(r.category), "probability": str(r.probability)}
-                            for r in candidate.safety_ratings
-                        ]
+        if response is None:
+            if not result.error:
+                result.error = last_error
+            result.duration = time.time() - start_time
+            return result
 
-                    if hasattr(candidate, 'finish_reason') and str(candidate.finish_reason) == "SAFETY":
-                        result.safety_blocked = True
-                        result.error = "Content blocked by safety filter"
-                        result.duration = time.time() - start_time
-                        return result
+        # Process response
+        if not self._process_response(response, result):
+            result.duration = time.time() - start_time
+            return result
 
-                    if hasattr(candidate, 'content') and candidate.content:
-                        for part in candidate.content.parts:
-                            if hasattr(part, 'text') and part.text:
-                                result.text = part.text
-                            elif hasattr(part, 'inline_data') and part.inline_data:
-                                image_data = part.inline_data.data
-                                result.image = Image.open(BytesIO(image_data))
-
-                result.duration = time.time() - start_time
-                self._record_stats(result.duration)
-                return result  # Success
-
-            except Exception as e:
-                error_msg = str(e)
-                last_error = error_msg
-
-                if "safety" in error_msg.lower() or "blocked" in error_msg.lower():
-                    result.safety_blocked = True
-                    result.error = "Content blocked by safety filter"
-                    result.duration = time.time() - start_time
-                    return result
-
-                if is_retryable_error(error_msg) and attempt < MAX_RETRIES:
-                    delay = RETRY_DELAYS[attempt]
-                    logger.warning(f"Retryable error on attempt {attempt + 1}: {error_msg}. Retrying in {delay}s...")
-                    time.sleep(delay)
-                    continue
-
-                break
-
-        result.error = last_error
         result.duration = time.time() - start_time
+        self._record_stats(result.duration)
         return result
 
     def generate_with_search(
@@ -419,7 +495,6 @@ class ImageGenerator:
         """
         start_time = time.time()
         result = GenerationResult()
-        last_error = None
 
         config = types.GenerateContentConfig(
             response_modalities=["Text", "Image"],
@@ -430,68 +505,28 @@ class ImageGenerator:
             safety_settings=build_safety_settings(safety_level),
         )
 
-        # Retry loop
-        for attempt in range(MAX_RETRIES + 1):
-            try:
-                # Make sync API call
-                response = self.client.models.generate_content(
-                    model=self.MODEL_ID,
-                    contents=prompt,
-                    config=config,
-                )
+        # Define API call
+        def api_call():
+            return self.client.models.generate_content(
+                model=self.MODEL_ID,
+                contents=prompt,
+                config=config,
+            )
 
-                # Check for safety blocks and process response
-                if response.candidates:
-                    candidate = response.candidates[0]
+        # Execute with retry
+        response, last_error = self._execute_with_retry(api_call, result, start_time)
 
-                    if hasattr(candidate, 'safety_ratings') and candidate.safety_ratings:
-                        result.safety_ratings = [
-                            {"category": str(r.category), "probability": str(r.probability)}
-                            for r in candidate.safety_ratings
-                        ]
+        if response is None:
+            if not result.error:
+                result.error = last_error
+            result.duration = time.time() - start_time
+            return result
 
-                    if hasattr(candidate, 'finish_reason') and str(candidate.finish_reason) == "SAFETY":
-                        result.safety_blocked = True
-                        result.error = "Content blocked by safety filter"
-                        result.duration = time.time() - start_time
-                        return result
+        # Process response with search extraction
+        if not self._process_response(response, result, extract_search=True):
+            result.duration = time.time() - start_time
+            return result
 
-                    if hasattr(candidate, 'content') and candidate.content:
-                        for part in candidate.content.parts:
-                            if hasattr(part, 'text') and part.text:
-                                result.text = part.text
-                            elif hasattr(part, 'inline_data') and part.inline_data:
-                                image_data = part.inline_data.data
-                                result.image = Image.open(BytesIO(image_data))
-
-                    # Get search sources
-                    if hasattr(candidate, 'grounding_metadata') and candidate.grounding_metadata:
-                        metadata = candidate.grounding_metadata
-                        if hasattr(metadata, 'search_entry_point') and metadata.search_entry_point:
-                            result.search_sources = metadata.search_entry_point.rendered_content
-
-                result.duration = time.time() - start_time
-                self._record_stats(result.duration)
-                return result  # Success
-
-            except Exception as e:
-                error_msg = str(e)
-                last_error = error_msg
-
-                if "safety" in error_msg.lower() or "blocked" in error_msg.lower():
-                    result.safety_blocked = True
-                    result.error = "Content blocked by safety filter"
-                    result.duration = time.time() - start_time
-                    return result
-
-                if is_retryable_error(error_msg) and attempt < MAX_RETRIES:
-                    delay = RETRY_DELAYS[attempt]
-                    logger.warning(f"Retryable error on attempt {attempt + 1}: {error_msg}. Retrying in {delay}s...")
-                    time.sleep(delay)
-                    continue
-
-                break
-
-        result.error = last_error
         result.duration = time.time() - start_time
+        self._record_stats(result.duration)
         return result
