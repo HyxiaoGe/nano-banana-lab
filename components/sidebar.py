@@ -215,40 +215,55 @@ def render_sidebar(t: Translator) -> dict:
 
         saved_settings = st.session_state.get("saved_settings", {})
 
+        # Initialize widget values from saved settings on first load
+        if "settings_initialized" not in st.session_state:
+            st.session_state.settings_initialized = True
+            # Pre-populate widget keys with saved values
+            if "aspect_ratio" in saved_settings:
+                st.session_state["widget_aspect_ratio"] = saved_settings["aspect_ratio"]
+            if "resolution" in saved_settings:
+                st.session_state["widget_resolution"] = saved_settings["resolution"]
+            if "enable_thinking" in saved_settings:
+                st.session_state["widget_enable_thinking"] = saved_settings["enable_thinking"]
+            if "enable_search" in saved_settings:
+                st.session_state["widget_enable_search"] = saved_settings["enable_search"]
+            if "safety_level" in saved_settings:
+                st.session_state["widget_safety_level"] = saved_settings["safety_level"]
+
         # Aspect ratio
         aspect_options = ["1:1", "16:9", "9:16", "4:3", "3:4"]
-        saved_aspect = saved_settings.get("aspect_ratio", "16:9")
-        aspect_index = aspect_options.index(saved_aspect) if saved_aspect in aspect_options else 1
+        default_aspect = st.session_state.get("widget_aspect_ratio", saved_settings.get("aspect_ratio", "16:9"))
+        aspect_index = aspect_options.index(default_aspect) if default_aspect in aspect_options else 1
 
         aspect_ratio = st.selectbox(
             t("sidebar.params.aspect_ratio"),
             options=aspect_options,
             index=aspect_index,
-            key="aspect_ratio"
+            key="widget_aspect_ratio"
         )
 
         # Resolution
         resolution_options = ["1K", "2K", "4K"]
-        saved_resolution = saved_settings.get("resolution", "1K")
-        resolution_index = resolution_options.index(saved_resolution) if saved_resolution in resolution_options else 0
+        default_resolution = st.session_state.get("widget_resolution", saved_settings.get("resolution", "1K"))
+        resolution_index = resolution_options.index(default_resolution) if default_resolution in resolution_options else 0
 
         resolution = st.selectbox(
             t("sidebar.params.resolution"),
             options=resolution_options,
             index=resolution_index,
-            key="resolution"
+            key="widget_resolution"
         )
 
         enable_thinking = st.checkbox(
             t("sidebar.params.thinking"),
-            value=saved_settings.get("enable_thinking", False),
-            key="enable_thinking"
+            value=st.session_state.get("widget_enable_thinking", saved_settings.get("enable_thinking", False)),
+            key="widget_enable_thinking"
         )
 
         enable_search = st.checkbox(
             t("sidebar.params.search"),
-            value=saved_settings.get("enable_search", False),
-            key="enable_search"
+            value=st.session_state.get("widget_enable_search", saved_settings.get("enable_search", False)),
+            key="widget_enable_search"
         )
 
         st.divider()
@@ -264,15 +279,15 @@ def render_sidebar(t: Translator) -> dict:
         }
 
         safety_options = list(safety_levels.keys())
-        saved_safety = saved_settings.get("safety_level", "moderate")
-        safety_index = safety_options.index(saved_safety) if saved_safety in safety_options else 1
+        default_safety = st.session_state.get("widget_safety_level", saved_settings.get("safety_level", "moderate"))
+        safety_index = safety_options.index(default_safety) if default_safety in safety_options else 1
 
         safety_level = st.selectbox(
             t("sidebar.safety.level_label"),
             options=safety_options,
             format_func=lambda x: safety_levels[x],
             index=safety_index,
-            key="safety_level",
+            key="widget_safety_level",
             help=t("sidebar.safety.help"),
         )
 
@@ -296,11 +311,12 @@ def render_sidebar(t: Translator) -> dict:
         "safety_level": safety_level,
     }
 
-    # Save settings if changed
-    if current_settings != saved_settings:
+    # Save settings if changed (skip on first load to avoid unnecessary save)
+    if st.session_state.get("settings_initialized") and current_settings != saved_settings:
         st.session_state.saved_settings = current_settings
         persistence = get_persistence()
-        persistence.save_settings(current_settings)
+        if persistence.save_settings(current_settings):
+            st.toast(t("sidebar.settings_saved"), icon="💾")
 
     return {
         "language": selected_lang,
