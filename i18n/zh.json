@@ -59,7 +59,8 @@
     },
     "stats": "统计信息",
     "about": "关于",
-    "about_text": "一个用于探索 Google Gemini Pro Image 能力的学习项目。"
+    "about_text": "一个用于探索 Google Gemini Pro Image 能力的学习项目。",
+    "settings_saved": "设置已保存"
   },
   "basic": {
     "title": "基础图像生成",

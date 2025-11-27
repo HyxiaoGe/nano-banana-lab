@@ -59,7 +59,8 @@
     },
     "stats": "Statistics",
     "about": "About",
-    "about_text": "A learning project for exploring Google Gemini Pro Image capabilities."
+    "about_text": "A learning project for exploring Google Gemini Pro Image capabilities.",
+    "settings_saved": "Settings saved"
   },
   "basic": {
     "title": "Basic Image Generation",
