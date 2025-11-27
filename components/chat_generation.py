@@ -139,12 +139,12 @@ def render_chat_generation(t: Translator, settings: dict, chat_session: ChatSess
                     GenerationStateManager.complete_generation(result=response)
                 except Exception as e:
                     GenerationStateManager.complete_generation(error=str(e))
-                    st.error(f"❌ {t('basic.error')}: {get_friendly_error_message(str(e))}")
+                    st.error(f"❌ {t('basic.error')}: {get_friendly_error_message(str(e), t)}")
                     st.rerun()
 
             if response.error:
                 icon = "🛡️" if response.safety_blocked else "❌"
-                friendly_error = get_friendly_error_message(response.error)
+                friendly_error = get_friendly_error_message(response.error, t)
                 st.error(f"{icon} {t('basic.error')}: {friendly_error}")
                 st.session_state.chat_messages.append({
                     "role": "assistant",

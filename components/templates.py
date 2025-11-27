@@ -173,12 +173,12 @@ def render_templates(t: Translator, settings: dict, generator: ImageGenerator):
                     GenerationStateManager.complete_generation(result=result)
                 except Exception as e:
                     GenerationStateManager.complete_generation(error=str(e))
-                    st.error(f"❌ {t('basic.error')}: {get_friendly_error_message(str(e))}")
+                    st.error(f"❌ {t('basic.error')}: {get_friendly_error_message(str(e), t)}")
                     return
 
             if result.error:
                 icon = "🛡️" if result.safety_blocked else "❌"
-                st.error(f"{icon} {t('basic.error')}: {get_friendly_error_message(result.error)}")
+                st.error(f"{icon} {t('basic.error')}: {get_friendly_error_message(result.error, t)}")
             elif result.image:
                 st.subheader(t("basic.result"))
 
