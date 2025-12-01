@@ -40,21 +40,19 @@ def _get_mode_label(mode: str, t: Translator) -> str:
 
 
 def _init_history_state():
-    """Initialize history-related session state."""
-    if "history_page" not in st.session_state:
-        st.session_state.history_page = 1
-    if "history_search" not in st.session_state:
-        st.session_state.history_search = ""
-    if "history_filter_mode" not in st.session_state:
-        st.session_state.history_filter_mode = "all"
-    if "history_per_page" not in st.session_state:
-        st.session_state.history_per_page = DEFAULT_PER_PAGE
-    if "history_sort" not in st.session_state:
-        st.session_state.history_sort = "newest"
-    if "history_date_range" not in st.session_state:
-        st.session_state.history_date_range = "all"
-    if "history_grid_cols" not in st.session_state:
-        st.session_state.history_grid_cols = DEFAULT_GRID_COLS
+    """Initialize history-related session state with defaults."""
+    defaults = {
+        "history_page": 1,
+        "history_search": "",
+        "history_filter_mode": "all",
+        "history_per_page": DEFAULT_PER_PAGE,
+        "history_sort": "newest",
+        "history_date_range": "all",
+        "history_grid_cols": DEFAULT_GRID_COLS,
+    }
+    for key, default_value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = default_value
 
 
 def _filter_history(
@@ -136,21 +134,10 @@ def _get_paginated_items(items: list, page: int, per_page: int) -> tuple:
     return items[start_idx:end_idx], total_pages
 
 
-def _preload_next_page(items: list, current_page: int, per_page: int):
-    """Preload images for the next page."""
-    history_sync = get_history_sync()
-    next_start = current_page * per_page
-    next_end = next_start + per_page
-    next_items = items[next_start:next_end]
-
-    keys_to_preload = []
-    for item in next_items:
-        file_key = item.get("key") or item.get("filename")
-        if file_key:
-            keys_to_preload.append(file_key)
-
-    if keys_to_preload:
-        history_sync.preload_images(keys_to_preload)
+# Callbacks for filter changes - avoids manual rerun checks
+def _on_filter_change():
+    """Reset to page 1 when any filter changes."""
+    st.session_state.history_page = 1
 
 
 def _get_image_source(item: dict):
@@ -251,10 +238,14 @@ def render_history(t: Translator):
 
     history_sync = get_history_sync()
 
-    # Sync from disk on load
-    if "history" not in st.session_state or not st.session_state.history:
-        with st.spinner(t("history.loading")):
-            history_sync.sync_from_disk(force=True)
+    # Only sync from disk when entering history page for the first time
+    # or when explicitly refreshed (not on every rerun)
+    history_loaded_key = "_history_page_loaded"
+    if not st.session_state.get(history_loaded_key):
+        if "history" not in st.session_state or not st.session_state.history:
+            with st.spinner(t("history.loading")):
+                history_sync.sync_from_disk(force=True)
+        st.session_state[history_loaded_key] = True
 
     full_history = st.session_state.get("history", [])
 
@@ -262,17 +253,13 @@ def render_history(t: Translator):
     col_search, col_filter = st.columns([3, 2])
 
     with col_search:
-        search_query = st.text_input(
+        st.text_input(
             t("history.search_placeholder"),
-            value=st.session_state.history_search,
             placeholder=t("history.search_placeholder"),
-            key="history_search_input",
+            key="history_search",
+            on_change=_on_filter_change,
             label_visibility="collapsed"
         )
-        if search_query != st.session_state.history_search:
-            st.session_state.history_search = search_query
-            st.session_state.history_page = 1
-            st.rerun()
 
     with col_filter:
         mode_options = ["all"] + GENERATION_MODES
@@ -286,20 +273,15 @@ def render_history(t: Translator):
             "search": t("sidebar.modes.search"),
             "template": t("sidebar.modes.templates"),
         }
-        current_filter_idx = mode_options.index(st.session_state.history_filter_mode) if st.session_state.history_filter_mode in mode_options else 0
 
-        filter_mode = st.selectbox(
+        st.selectbox(
             t("history.filter_mode"),
             options=mode_options,
             format_func=lambda x: mode_labels.get(x, x),
-            index=current_filter_idx,
-            key="history_filter_select",
+            key="history_filter_mode",
+            on_change=_on_filter_change,
             label_visibility="collapsed"
         )
-        if filter_mode != st.session_state.history_filter_mode:
-            st.session_state.history_filter_mode = filter_mode
-            st.session_state.history_page = 1
-            st.rerun()
 
     # Filter controls - Row 2: Sort, Date Range, Per Page
     col_sort, col_date, col_per_page = st.columns([2, 2, 1])
@@ -311,20 +293,15 @@ def render_history(t: Translator):
             "fastest": t("history.sort_fastest"),
             "slowest": t("history.sort_slowest"),
         }
-        current_sort_idx = SORT_OPTIONS.index(st.session_state.history_sort) if st.session_state.history_sort in SORT_OPTIONS else 0
 
-        sort_by = st.selectbox(
+        st.selectbox(
             t("history.sort_label"),
             options=SORT_OPTIONS,
             format_func=lambda x: sort_labels.get(x, x),
-            index=current_sort_idx,
-            key="history_sort_select",
+            key="history_sort",
+            on_change=_on_filter_change,
             label_visibility="collapsed"
         )
-        if sort_by != st.session_state.history_sort:
-            st.session_state.history_sort = sort_by
-            st.session_state.history_page = 1
-            st.rerun()
 
     with col_date:
         date_options = ["all", "today", "week", "month"]
@@ -334,33 +311,24 @@ def render_history(t: Translator):
             "week": t("history.date_week"),
             "month": t("history.date_month"),
         }
-        current_date_idx = date_options.index(st.session_state.history_date_range) if st.session_state.history_date_range in date_options else 0
 
-        date_range = st.selectbox(
+        st.selectbox(
             t("history.date_label"),
             options=date_options,
             format_func=lambda x: date_labels.get(x, x),
-            index=current_date_idx,
-            key="history_date_select",
+            key="history_date_range",
+            on_change=_on_filter_change,
             label_visibility="collapsed"
         )
-        if date_range != st.session_state.history_date_range:
-            st.session_state.history_date_range = date_range
-            st.session_state.history_page = 1
-            st.rerun()
 
     with col_per_page:
-        per_page = st.selectbox(
+        st.selectbox(
             t("history.per_page"),
             options=PER_PAGE_OPTIONS,
-            index=PER_PAGE_OPTIONS.index(st.session_state.history_per_page) if st.session_state.history_per_page in PER_PAGE_OPTIONS else 1,
-            key="history_per_page_select",
+            key="history_per_page",
+            on_change=_on_filter_change,
             label_visibility="collapsed"
         )
-        if per_page != st.session_state.history_per_page:
-            st.session_state.history_per_page = per_page
-            st.session_state.history_page = 1
-            st.rerun()
 
     # Refresh button + Grid columns selector
     col_refresh, col_grid, col_spacer = st.columns([1, 1, 3])
@@ -369,30 +337,25 @@ def render_history(t: Translator):
             with st.spinner(t("history.loading")):
                 history_sync.sync_from_disk(force=True)
             st.session_state.history_page = 1
-            st.rerun()
-    
+
     with col_grid:
-        grid_cols = st.segmented_control(
+        st.segmented_control(
             t("history.grid_cols"),
             options=GRID_COLS_OPTIONS,
             format_func=lambda x: str(x),
-            default=st.session_state.history_grid_cols,
-            key="history_grid_select",
+            key="history_grid_cols",
             label_visibility="collapsed"
         )
-        if grid_cols and grid_cols != st.session_state.history_grid_cols:
-            st.session_state.history_grid_cols = grid_cols
-            st.rerun()
-    
+
     # col_spacer is empty
 
-    # Filter history
+    # Filter history - use widget keys directly from session_state
     filtered_history = _filter_history(
         full_history,
-        st.session_state.history_search,
-        st.session_state.history_filter_mode,
-        st.session_state.history_date_range,
-        st.session_state.history_sort
+        st.session_state.get("history_search", ""),
+        st.session_state.get("history_filter_mode", "all"),
+        st.session_state.get("history_date_range", "all"),
+        st.session_state.get("history_sort", "newest")
     )
 
     # Show count
@@ -411,27 +374,19 @@ def render_history(t: Translator):
 
     st.divider()
 
-    # Pagination
+    # Pagination - only load current page items (lazy loading)
     paginated_items, total_pages = _get_paginated_items(
         filtered_history,
         st.session_state.history_page,
-        st.session_state.history_per_page
+        st.session_state.get("history_per_page", DEFAULT_PER_PAGE)
     )
-
-    # Preload next page
-    if st.session_state.history_page < total_pages:
-        _preload_next_page(
-            filtered_history,
-            st.session_state.history_page,
-            st.session_state.history_per_page
-        )
 
     # Pagination controls (top)
     if total_pages > 1:
         _render_pagination_controls(t, total_pages)
 
     # Display history items in grid
-    cols_per_row = st.session_state.history_grid_cols
+    cols_per_row = st.session_state.get("history_grid_cols", DEFAULT_GRID_COLS)
     for row_idx in range(0, len(paginated_items), cols_per_row):
         cols = st.columns(cols_per_row)
 
@@ -463,7 +418,7 @@ def _render_pagination_controls(t: Translator, total_pages: int, key_suffix: str
             key=f"prev_btn{key_suffix}"
         ):
             st.session_state.history_page -= 1
-            st.rerun()
+            # No explicit rerun needed - Streamlit auto-reruns after button click
 
     with col2:
         st.markdown(
@@ -481,7 +436,7 @@ def _render_pagination_controls(t: Translator, total_pages: int, key_suffix: str
             key=f"next_btn{key_suffix}"
         ):
             st.session_state.history_page += 1
-            st.rerun()
+            # No explicit rerun needed - Streamlit auto-reruns after button click
 
 
 def _render_empty_state(t: Translator):

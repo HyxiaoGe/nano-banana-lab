@@ -119,10 +119,8 @@ def render_health_check_section(t: Translator, api_key: str):
                 HealthCheckService.run_check(api_key)
             st.rerun()
 
-    # Auto-check if enough time has passed
-    if HealthCheckService.should_check() and not HealthCheckService.is_checking():
-        # Run health check in background (will update on next rerun)
-        HealthCheckService.run_check(api_key)
+    # Don't auto-check on page load - only check when user clicks the button
+    # This avoids blocking the initial page render with an API call
 
     # Show last check time
     if result.timestamp > 0:
@@ -167,6 +165,13 @@ def render_sidebar(t: Translator) -> dict:
         st.subheader(t("sidebar.language"))
         lang_options = list(LANGUAGES.keys())
 
+        def _on_language_change():
+            """Handle language change - save to persistence."""
+            new_lang = st.session_state.language_selector
+            st.session_state.language = new_lang
+            persistence = get_persistence()
+            persistence.save_language(new_lang)
+
         current_lang_idx = lang_options.index(st.session_state.get("language", "en"))
         selected_lang = st.selectbox(
             t("sidebar.language"),
@@ -174,16 +179,9 @@ def render_sidebar(t: Translator) -> dict:
             format_func=lambda x: LANGUAGES[x],
             index=current_lang_idx,
             key="language_selector",
+            on_change=_on_language_change,
             label_visibility="collapsed"
         )
-
-        # Update language in session state and persist
-        if selected_lang != st.session_state.get("language"):
-            st.session_state.language = selected_lang
-            # Save to browser storage
-            persistence = get_persistence()
-            persistence.save_language(selected_lang)
-            st.rerun()
 
         st.divider()
 
@@ -199,14 +197,24 @@ def render_sidebar(t: Translator) -> dict:
             "history": t("sidebar.modes.history"),
         }
 
+        # Get saved mode or default to "basic"
+        mode_options = list(modes.keys())
+        saved_mode = st.session_state.get("saved_mode", "basic")
+        default_mode_idx = mode_options.index(saved_mode) if saved_mode in mode_options else 0
+
         selected_mode = st.radio(
             t("sidebar.mode"),
-            options=list(modes.keys()),
+            options=mode_options,
             format_func=lambda x: modes[x],
-            index=0,
+            index=default_mode_idx,
             key="mode_selector",
             label_visibility="collapsed"
         )
+
+        # Save mode when changed (using on_change would require restructuring)
+        if selected_mode != st.session_state.get("saved_mode"):
+            st.session_state.saved_mode = selected_mode
+            get_persistence().save_mode(selected_mode)
 
         st.divider()
 

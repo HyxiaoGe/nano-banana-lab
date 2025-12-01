@@ -17,20 +17,27 @@ DEFAULT_LANGUAGE = "en"
 _translations: Dict[str, Dict[str, Any]] = {}
 
 
-def _load_language(lang_code: str) -> Dict[str, Any]:
-    """Load language file."""
-    if lang_code in _translations:
-        return _translations[lang_code]
-
+def _load_language_from_file(lang_code: str) -> Dict[str, Any]:
+    """Load language file from disk."""
     lang_file = os.path.join(os.path.dirname(__file__), f"{lang_code}.json")
     if os.path.exists(lang_file):
         with open(lang_file, "r", encoding="utf-8") as f:
-            _translations[lang_code] = json.load(f)
-    else:
-        # Fallback to English
-        _translations[lang_code] = _load_language(DEFAULT_LANGUAGE) if lang_code != DEFAULT_LANGUAGE else {}
+            return json.load(f)
+    return {}
 
-    return _translations.get(lang_code, {})
+
+def _load_language(lang_code: str) -> Dict[str, Any]:
+    """Load language file with caching."""
+    if lang_code in _translations:
+        return _translations[lang_code]
+
+    data = _load_language_from_file(lang_code)
+    if not data and lang_code != DEFAULT_LANGUAGE:
+        # Fallback to English
+        data = _load_language(DEFAULT_LANGUAGE)
+
+    _translations[lang_code] = data
+    return data
 
 
 def get_text(key: str, lang: str = DEFAULT_LANGUAGE, **kwargs) -> str:

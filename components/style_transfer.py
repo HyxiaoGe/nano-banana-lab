@@ -44,6 +44,10 @@ def render_style_transfer(t: Translator, settings: dict, generator: ImageGenerat
 
 def render_style_transfer_mode(t: Translator, settings: dict, generator: ImageGenerator):
     """Style transfer: apply style from one image to another."""
+    # Get generation state
+    is_generating = GenerationStateManager.is_generating()
+    can_generate_state, _ = GenerationStateManager.can_start_generation()
+
     st.subheader(t("blend.style.title"))
     st.write(t("blend.style.description"))
 

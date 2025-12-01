@@ -79,9 +79,12 @@ def init_session_state():
     if "chat_messages" not in st.session_state:
         st.session_state.chat_messages = []
 
-    # Initialize services if not already done
+    # Delay service initialization - only mark as needing init
+    # Actual init happens lazily when needed
     if "generator" not in st.session_state:
-        init_services()
+        st.session_state.generator = None
+        st.session_state.chat_session = None
+        st.session_state._services_need_init = True
 
 
 def handle_api_key_change():
@@ -120,12 +123,22 @@ def main():
         st.info(t("errors.api_key_help"))
         return
 
+    # Render main content based on mode
+    mode = settings["mode"]
+
+    # History mode doesn't need generator/chat_session
+    if mode == "history":
+        render_history(t)
+        return
+
+    # Lazy init services only when actually needed
+    if st.session_state.get("_services_need_init"):
+        init_services()
+        st.session_state._services_need_init = False
+
     # Get services from session state
     generator = st.session_state.generator
     chat_session = st.session_state.chat_session
-
-    # Render main content based on mode
-    mode = settings["mode"]
 
     if mode == "basic":
         render_basic_generation(t, settings, generator)
@@ -139,8 +152,6 @@ def main():
         render_search_generation(t, settings, generator)
     elif mode == "templates":
         render_templates(t, settings, generator)
-    elif mode == "history":
-        render_history(t)
 
 
 if __name__ == "__main__":
