@@ -169,14 +169,14 @@ def render_history(t: Translator):
     col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
 
     with col1:
-        if st.button(f"🔄 {t('history.refresh_btn')}", use_container_width=True):
+        if st.button(f"🔄 {t('history.refresh_btn')}", width="stretch"):
             with st.spinner(t("history.loading")):
                 history_sync.sync_from_disk(force=True)
             st.session_state.history_page = 1
             st.rerun()
 
     with col2:
-        if st.button(t("history.clear_btn"), type="secondary", use_container_width=True):
+        if st.button(t("history.clear_btn"), type="secondary", width="stretch"):
             st.session_state.show_clear_confirm = True
 
     with col3:
@@ -270,7 +270,7 @@ def _render_pagination_controls(t: Translator, total_pages: int, key_suffix: str
         if st.button(
             f"◀ {t('history.prev_btn')}",
             disabled=st.session_state.history_page <= 1,
-            use_container_width=True,
+            width="stretch",
             key=f"prev_btn{key_suffix}"
         ):
             st.session_state.history_page -= 1
@@ -286,7 +286,7 @@ def _render_pagination_controls(t: Translator, total_pages: int, key_suffix: str
         if st.button(
             f"{t('history.next_btn')} ▶",
             disabled=st.session_state.history_page >= total_pages,
-            use_container_width=True,
+            width="stretch",
             key=f"next_btn{key_suffix}"
         ):
             st.session_state.history_page += 1
@@ -321,13 +321,13 @@ def _render_history_item(t: Translator, item: dict, idx: int):
                 "🔍",
                 key=preview_key,
                 help=t("history.preview_btn"),
-                use_container_width=False,
+                width="content",
             ):
                 st.session_state.preview_item = item
                 st.session_state.show_preview = True
                 st.rerun()
 
-            st.image(item["image"], use_container_width=True)
+            st.image(item["image"], width="stretch")
 
         # Prompt
         prompt_text = item.get('prompt', 'N/A')
@@ -371,7 +371,7 @@ def _render_history_item(t: Translator, item: dict, idx: int):
                 file_name=filename,
                 mime="image/png",
                 key=f"download_history_{idx}_{st.session_state.history_page}",
-                use_container_width=True
+                width="stretch"
             )
 
 
@@ -395,7 +395,7 @@ def _render_preview_dialog(t: Translator):
 
         # Full-size image
         if item.get("image"):
-            st.image(item["image"], use_container_width=True)
+            st.image(item["image"], width="stretch")
 
         # Full prompt
         st.markdown(f"**{t('history.prompt_label')}:**")
@@ -424,7 +424,7 @@ def _render_preview_dialog(t: Translator):
                 file_name=filename,
                 mime="image/png",
                 key="download_preview",
-                use_container_width=True
+                width="stretch"
             )
 
         st.markdown("---")

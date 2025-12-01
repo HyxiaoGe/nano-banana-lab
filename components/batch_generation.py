@@ -115,12 +115,12 @@ def render_batch_generation(t: Translator, settings: dict, generator: ImageGener
             t("basic.generate_btn") if not is_generating else t("basic.generating"),
             type="primary",
             disabled=button_disabled,
-            use_container_width=True
+            width="stretch"
         )
 
     with col2:
         if is_generating:
-            if st.button(t("generation.cancel_btn"), use_container_width=True):
+            if st.button(t("generation.cancel_btn"), width="stretch"):
                 GenerationStateManager.cancel_generation()
                 st.toast(t("generation.cancelled"), icon="⚠️")
                 st.rerun()
@@ -195,7 +195,7 @@ def render_batch_generation(t: Translator, settings: dict, generator: ImageGener
                 for idx, result in enumerate(successful):
                     col_idx = idx % 4
                     with cols[col_idx]:
-                        st.image(result.image, use_container_width=True)
+                        st.image(result.image, width="stretch")
 
                         buf = BytesIO()
                         result.image.save(buf, format="PNG")
@@ -205,7 +205,7 @@ def render_batch_generation(t: Translator, settings: dict, generator: ImageGener
                             file_name=f"batch_{idx + 1}.png",
                             mime="image/png",
                             key=f"download_batch_{idx}",
-                            use_container_width=True
+                            width="stretch"
                         )
 
                 # Save to history using sync manager
@@ -249,5 +249,5 @@ def render_batch_generation(t: Translator, settings: dict, generator: ImageGener
                     file_name=f"batch_{timestamp}.zip",
                     mime="application/zip",
                     key="download_batch_zip",
-                    use_container_width=True
+                    width="stretch"
                 )

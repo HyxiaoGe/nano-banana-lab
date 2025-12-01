@@ -36,7 +36,7 @@ def render_chat_generation(t: Translator, settings: dict, chat_session: ChatSess
     # Control buttons
     col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
     with col1:
-        if st.button(t("chat.start_btn"), use_container_width=True):
+        if st.button(t("chat.start_btn"), width="stretch"):
             chat_session.clear_session()
             chat_session.start_session(aspect_ratio=settings["aspect_ratio"])
             st.session_state.chat_messages = [{
@@ -50,7 +50,7 @@ def render_chat_generation(t: Translator, settings: dict, chat_session: ChatSess
     with col2:
         # Clear button with confirmation
         has_messages = bool(st.session_state.chat_messages)
-        if st.button(t("chat.clear_btn"), use_container_width=True, disabled=not has_messages):
+        if st.button(t("chat.clear_btn"), width="stretch", disabled=not has_messages):
             st.session_state.show_chat_clear_confirm = True
 
     with col3:
@@ -63,7 +63,7 @@ def render_chat_generation(t: Translator, settings: dict, chat_session: ChatSess
                 data=export_data,
                 file_name=f"chat_export_{timestamp}.json",
                 mime="application/json",
-                use_container_width=True
+                width="stretch"
             )
 
     # Show message count
@@ -111,7 +111,7 @@ def render_chat_generation(t: Translator, settings: dict, chat_session: ChatSess
 
             # Show image if available
             if message.get("image"):
-                st.image(message["image"], use_container_width=True)
+                st.image(message["image"], width="stretch")
 
                 # Download button - compact style
                 buf = BytesIO()
@@ -122,7 +122,7 @@ def render_chat_generation(t: Translator, settings: dict, chat_session: ChatSess
                     file_name=f"chat_{idx + 1}.png",
                     mime="image/png",
                     key=f"download_chat_{idx}",
-                    use_container_width=False
+                    width="content"
                 )
 
     # Check generation state
@@ -192,7 +192,7 @@ def render_chat_generation(t: Translator, settings: dict, chat_session: ChatSess
                         st.write(response.thinking)
 
                 if response.image:
-                    st.image(response.image, use_container_width=True)
+                    st.image(response.image, width="stretch")
 
                     # Download button - compact style
                     buf = BytesIO()
@@ -203,7 +203,7 @@ def render_chat_generation(t: Translator, settings: dict, chat_session: ChatSess
                         file_name=f"chat_{len(st.session_state.chat_messages) + 1}.png",
                         mime="image/png",
                         key=f"download_chat_new",
-                        use_container_width=False
+                        width="content"
                     )
 
                 # Store in history using sync manager

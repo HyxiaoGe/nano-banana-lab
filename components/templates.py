@@ -109,7 +109,7 @@ def render_templates(t: Translator, settings: dict, generator: ImageGenerator):
                 with st.container(border=True):
                     st.write(f"**{t('templates.template')} {idx + 1}**")
                     st.caption(prompt[:50] + "..." if len(prompt) > 50 else prompt)
-                    if st.button(t("templates.use_btn"), key=f"template_{selected_tab}_{idx}", use_container_width=True):
+                    if st.button(t("templates.use_btn"), key=f"template_{selected_tab}_{idx}", width="stretch"):
                         st.session_state.template_prompt = prompt
                         st.session_state.selected_template = f"{selected_tab}_{idx}"
 
@@ -186,7 +186,7 @@ def render_templates(t: Translator, settings: dict, generator: ImageGenerator):
                     with st.expander(t("basic.thinking_label"), expanded=False):
                         st.write(result.thinking)
 
-                st.image(result.image, use_container_width=True)
+                st.image(result.image, width="stretch")
 
                 if result.text:
                     with st.expander(t("basic.response_label"), expanded=True):
@@ -203,7 +203,7 @@ def render_templates(t: Translator, settings: dict, generator: ImageGenerator):
                         data=buf.getvalue(),
                         file_name="template_generated.png",
                         mime="image/png",
-                        use_container_width=True
+                        width="stretch"
                     )
 
                 # Save to history using sync manager

@@ -51,7 +51,7 @@ def render_api_key_section(t: Translator) -> bool:
         col1, col2 = st.columns(2)
 
         with col1:
-            if st.button(t("sidebar.api_key.validate_btn"), use_container_width=True):
+            if st.button(t("sidebar.api_key.validate_btn"), width="stretch"):
                 if api_key_input:
                     with st.spinner(t("sidebar.api_key.validating")):
                         from services import ImageGenerator
@@ -73,7 +73,7 @@ def render_api_key_section(t: Translator) -> bool:
                     st.toast(t("sidebar.api_key.empty"), icon="⚠️")
 
         with col2:
-            if st.button(t("sidebar.api_key.clear_btn"), use_container_width=True):
+            if st.button(t("sidebar.api_key.clear_btn"), width="stretch"):
                 st.session_state.user_api_key = ""
                 st.session_state.api_key_valid = has_env_key
                 st.session_state.api_key_source = "env" if has_env_key else "user"

@@ -58,7 +58,7 @@ def render_style_transfer_mode(t: Translator, settings: dict, generator: ImageGe
         )
         if content_file:
             content_image = Image.open(content_file)
-            st.image(content_image, use_container_width=True)
+            st.image(content_image, width="stretch")
 
     with col2:
         st.write(f"**{t('blend.style.style_image')}**")
@@ -69,7 +69,7 @@ def render_style_transfer_mode(t: Translator, settings: dict, generator: ImageGe
         )
         if style_file:
             style_image = Image.open(style_file)
-            st.image(style_image, use_container_width=True)
+            st.image(style_image, width="stretch")
 
     # Custom prompt
     prompt = st.text_input(
@@ -111,7 +111,7 @@ def render_style_transfer_mode(t: Translator, settings: dict, generator: ImageGe
                 st.error(f"{icon} {t('basic.error')}: {get_friendly_error_message(result.error, t)}")
             elif result.image:
                 st.subheader(t("basic.result"))
-                st.image(result.image, use_container_width=True)
+                st.image(result.image, width="stretch")
 
                 if result.text:
                     st.write(result.text)
@@ -127,7 +127,7 @@ def render_style_transfer_mode(t: Translator, settings: dict, generator: ImageGe
                         data=buf.getvalue(),
                         file_name="style_transfer.png",
                         mime="image/png",
-                        use_container_width=True
+                        width="stretch"
                     )
 
                 # Save to history using sync manager
@@ -170,7 +170,7 @@ def render_blend_mode(t: Translator, settings: dict, generator: ImageGenerator):
         for idx, file in enumerate(uploaded_files[:4]):
             with cols[idx]:
                 img = Image.open(file)
-                st.image(img, use_container_width=True)
+                st.image(img, width="stretch")
         if len(uploaded_files) > 4:
             st.caption(f"... {t('blend.multi.more', count=len(uploaded_files) - 4)}")
 
@@ -214,7 +214,7 @@ def render_blend_mode(t: Translator, settings: dict, generator: ImageGenerator):
                 st.error(f"{icon} {t('basic.error')}: {get_friendly_error_message(result.error, t)}")
             elif result.image:
                 st.subheader(t("basic.result"))
-                st.image(result.image, use_container_width=True)
+                st.image(result.image, width="stretch")
 
                 if result.text:
                     st.write(result.text)
@@ -230,7 +230,7 @@ def render_blend_mode(t: Translator, settings: dict, generator: ImageGenerator):
                         data=buf.getvalue(),
                         file_name="blended_image.png",
                         mime="image/png",
-                        use_container_width=True
+                        width="stretch"
                     )
 
                 # Save to history using sync manager

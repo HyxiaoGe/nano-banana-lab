@@ -32,7 +32,7 @@ def render_search_generation(t: Translator, settings: dict, generator: ImageGene
         examples = t("search.examples.items")
         if isinstance(examples, list):
             for example in examples:
-                if st.button(example, key=f"search_example_{hash(example)}", use_container_width=True):
+                if st.button(example, key=f"search_example_{hash(example)}", width="stretch"):
                     st.session_state.search_prompt = example
                     st.rerun()
 
@@ -81,7 +81,7 @@ def render_search_generation(t: Translator, settings: dict, generator: ImageGene
                 st.error(f"{icon} {t('basic.error')}: {get_friendly_error_message(result.error, t)}")
             elif result.image:
                 st.subheader(t("basic.result"))
-                st.image(result.image, use_container_width=True)
+                st.image(result.image, width="stretch")
 
                 # Show text response
                 if result.text:
@@ -105,7 +105,7 @@ def render_search_generation(t: Translator, settings: dict, generator: ImageGene
                         data=buf.getvalue(),
                         file_name="search_generated.png",
                         mime="image/png",
-                        use_container_width=True
+                        width="stretch"
                     )
 
                 # Save to history using sync manager

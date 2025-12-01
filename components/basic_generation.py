@@ -32,7 +32,7 @@ def render_basic_generation(t: Translator, settings: dict, generator: ImageGener
         examples = t("basic.examples.items")
         if isinstance(examples, list):
             for example in examples:
-                if st.button(example, key=f"example_{hash(example)}", use_container_width=True):
+                if st.button(example, key=f"example_{hash(example)}", width="stretch"):
                     st.session_state.prompt_input = example
                     st.rerun()
 
@@ -68,14 +68,14 @@ def render_basic_generation(t: Translator, settings: dict, generator: ImageGener
         generate_clicked = st.button(
             t("basic.generate_btn") if not is_generating else t("basic.generating"),
             type="primary",
-            use_container_width=True,
+            width="stretch",
             disabled=button_disabled
         )
 
     with col2:
         # Show cancel button when generating
         if is_generating:
-            if st.button(t("generation.cancel_btn"), use_container_width=True):
+            if st.button(t("generation.cancel_btn"), width="stretch"):
                 GenerationStateManager.cancel_generation()
                 st.toast(t("generation.cancelled"), icon="⚠️")
                 st.rerun()
@@ -185,7 +185,7 @@ def _display_result(t: Translator, image, text: str, thinking: str,
             st.write(thinking)
 
     # Show image
-    st.image(image, use_container_width=True)
+    st.image(image, width="stretch")
 
     # Action bar: timing info and download button
     col1, col2 = st.columns([3, 1])
@@ -200,7 +200,7 @@ def _display_result(t: Translator, image, text: str, thinking: str,
             data=buf.getvalue(),
             file_name=download_name,
             mime="image/png",
-            use_container_width=True
+            width="stretch"
         )
 
     # Show text response
@@ -218,7 +218,7 @@ def _display_history_item(t: Translator, item: dict):
             st.write(item["thinking"])
 
     # Show image
-    st.image(item["image"], use_container_width=True)
+    st.image(item["image"], width="stretch")
 
     # Action bar
     col1, col2 = st.columns([3, 1])
@@ -235,7 +235,7 @@ def _display_history_item(t: Translator, item: dict):
             data=buf.getvalue(),
             file_name=download_name,
             mime="image/png",
-            use_container_width=True
+            width="stretch"
         )
 
     if item.get("text"):
