@@ -85,6 +85,36 @@ def _get_paginated_items(items: list, page: int, per_page: int) -> tuple:
     return items[start_idx:end_idx], total_pages
 
 
+def _preload_next_page(items: list, current_page: int, per_page: int):
+    """
+    Preload images for the next page to improve perceived performance.
+
+    Args:
+        items: Full list of items
+        current_page: Current page number
+        per_page: Items per page
+    """
+    history_sync = get_history_sync()
+
+    # Calculate next page range
+    next_start = current_page * per_page
+    next_end = next_start + per_page
+
+    # Get items for next page
+    next_items = items[next_start:next_end]
+
+    # Collect file keys to preload
+    keys_to_preload = []
+    for item in next_items:
+        file_key = item.get("key") or item.get("filename")
+        if file_key:
+            keys_to_preload.append(file_key)
+
+    # Trigger preload
+    if keys_to_preload:
+        history_sync.preload_images(keys_to_preload)
+
+
 def render_history(t: Translator):
     """
     Render the image generation history with pagination and search.
@@ -237,6 +267,14 @@ def render_history(t: Translator):
         st.session_state.history_per_page
     )
 
+    # Preload next page images for better UX
+    if st.session_state.history_page < total_pages:
+        _preload_next_page(
+            filtered_history,
+            st.session_state.history_page,
+            st.session_state.history_per_page
+        )
+
     # Pagination controls (top)
     if total_pages > 1:
         _render_pagination_controls(t, total_pages)
@@ -310,11 +348,29 @@ def _render_empty_state(t: Translator):
         )
 
 
+def _get_image_source(item: dict):
+    """
+    Get the best image source for display.
+    Prefers CDN URL over PIL Image for faster loading.
+
+    Returns:
+        URL string or PIL Image object
+    """
+    # Prefer CDN URL if available (much faster)
+    if item.get("r2_url"):
+        return item["r2_url"]
+
+    # Fall back to PIL Image
+    return item.get("image")
+
+
 def _render_history_item(t: Translator, item: dict, idx: int):
     """Render a single history item with preview capability."""
     with st.container(border=True):
-        # Image with click hint
-        if item.get("image"):
+        # Get image source (URL or PIL Image)
+        image_source = _get_image_source(item)
+
+        if image_source:
             # Store item for preview dialog
             preview_key = f"preview_{idx}_{st.session_state.history_page}"
             if st.button(
@@ -327,7 +383,7 @@ def _render_history_item(t: Translator, item: dict, idx: int):
                 st.session_state.show_preview = True
                 st.rerun()
 
-            st.image(item["image"], width="stretch")
+            st.image(image_source, width="stretch")
 
         # Prompt
         prompt_text = item.get('prompt', 'N/A')
@@ -359,7 +415,17 @@ def _render_history_item(t: Translator, item: dict, idx: int):
         st.caption(" | ".join(info_parts))
 
         # Download button
-        if item.get("image"):
+        if item.get("r2_url"):
+            # Use CDN URL for download link
+            filename = item.get("filename", f"history_{idx}.png")
+            if "/" in filename:
+                filename = filename.split("/")[-1]
+            st.link_button(
+                f"⬇️ {t('history.download_btn')}",
+                url=item["r2_url"],
+                use_container_width=True,
+            )
+        elif item.get("image"):
             buf = BytesIO()
             item["image"].save(buf, format="PNG")
             filename = item.get("filename", f"history_{idx}.png")
@@ -393,9 +459,10 @@ def _render_preview_dialog(t: Translator):
             st.session_state.preview_item = None
             st.rerun()
 
-        # Full-size image
-        if item.get("image"):
-            st.image(item["image"], width="stretch")
+        # Full-size image - prefer CDN URL
+        image_source = _get_image_source(item)
+        if image_source:
+            st.image(image_source, width="stretch")
 
         # Full prompt
         st.markdown(f"**{t('history.prompt_label')}:**")
@@ -412,7 +479,13 @@ def _render_preview_dialog(t: Translator):
             st.metric("Mode", item.get("mode", "basic"))
 
         # Download in preview
-        if item.get("image"):
+        if item.get("r2_url"):
+            st.link_button(
+                f"⬇️ {t('history.download_btn')}",
+                url=item["r2_url"],
+                use_container_width=True,
+            )
+        elif item.get("image"):
             buf = BytesIO()
             item["image"].save(buf, format="PNG")
             filename = item.get("filename", "preview.png")

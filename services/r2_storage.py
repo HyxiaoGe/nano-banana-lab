@@ -174,12 +174,13 @@ class R2Storage:
                 "created_at": datetime.now().isoformat(),
             }
 
-            # Upload to R2
+            # Upload to R2 with long cache (images are immutable)
             self._client.put_object(
                 Bucket=self.bucket_name,
                 Key=key,
                 Body=img_buffer.getvalue(),
                 ContentType="image/png",
+                CacheControl="public, max-age=31536000, immutable",  # 1 year cache
                 Metadata=metadata
             )
 

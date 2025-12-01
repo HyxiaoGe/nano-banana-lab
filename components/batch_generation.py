@@ -169,85 +169,109 @@ def render_batch_generation(t: Translator, settings: dict, generator: ImageGener
                     st.error(f"❌ {t('basic.error')}: {get_friendly_error_message(str(e), t)}")
                     return
 
-            # Display results
-            st.subheader(t("batch.results"))
-
             # Calculate statistics
             successful = [r for r in results if r.image is not None]
             failed = [r for r in results if r.error is not None]
             total_time = sum(r.duration for r in results)
 
-            # Show stats
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric(t("batch.successful"), len(successful))
-            with col2:
-                st.metric(t("batch.failed"), len(failed))
-            with col3:
-                st.metric(t("batch.total_time"), f"{total_time:.1f}s")
+            # Save to history using sync manager
+            history_sync = get_history_sync()
+            for idx, result in enumerate(successful):
+                history_sync.save_to_history(
+                    image=result.image,
+                    prompt=f"[Batch {idx + 1}/{len(successful)}] {prompt}",
+                    settings=settings,
+                    duration=result.duration,
+                    mode="batch",
+                    text_response=result.text,
+                )
 
-            st.divider()
+            # Store as last result for this mode
+            st.session_state.batch_last_results = {
+                "images": [r.image for r in successful],
+                "total_time": total_time,
+                "successful_count": len(successful),
+                "failed_count": len(failed),
+                "failed_errors": [r.error for r in failed if r.error],
+                "prompt": prompt,
+            }
 
-            # Display images in grid
-            if successful:
-                cols = st.columns(min(len(successful), 4))
+            st.toast(t("toast.batch_saved", count=len(successful)), icon="✅")
 
-                for idx, result in enumerate(successful):
-                    col_idx = idx % 4
-                    with cols[col_idx]:
-                        st.image(result.image, width="stretch")
-
-                        buf = BytesIO()
-                        result.image.save(buf, format="PNG")
-                        st.download_button(
-                            f"⬇️ #{idx + 1}",
-                            data=buf.getvalue(),
-                            file_name=f"batch_{idx + 1}.png",
-                            mime="image/png",
-                            key=f"download_batch_{idx}",
-                            width="stretch"
-                        )
-
-                # Save to history using sync manager
-                history_sync = get_history_sync()
-                for idx, result in enumerate(successful):
-                    history_sync.save_to_history(
-                        image=result.image,
-                        prompt=f"[Batch {idx + 1}/{len(successful)}] {prompt}",
-                        settings=settings,
-                        duration=result.duration,
-                        mode="batch",
-                        text_response=result.text,
-                    )
-
-                st.toast(t("toast.batch_saved", count=len(successful)), icon="✅")
-
-            # Show errors if any
             if failed:
                 st.toast(t("toast.batch_failed", count=len(failed)), icon="⚠️")
-                with st.expander(t("batch.errors"), expanded=False):
-                    for idx, result in enumerate(failed):
-                        st.write(f"Image {idx + 1}: {result.error}")
 
-            # Download all as ZIP
-            if len(successful) > 1:
-                st.divider()
+            # Display results
+            _display_batch_results(t, st.session_state.batch_last_results)
 
-                zip_buffer = io.BytesIO()
-                with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-                    for idx, result in enumerate(successful):
-                        img_buffer = BytesIO()
-                        result.image.save(img_buffer, format="PNG")
-                        prompt_slug = "".join(c if c.isalnum() or c == " " else "" for c in prompt[:20])
-                        prompt_slug = "_".join(prompt_slug.split())
-                        zip_file.writestr(f"batch_{idx + 1}_{prompt_slug}.png", img_buffer.getvalue())
+    # Show last generated results from current session
+    elif not is_generating and "batch_last_results" in st.session_state and st.session_state.batch_last_results:
+        _display_batch_results(t, st.session_state.batch_last_results)
 
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+def _display_batch_results(t: Translator, data: dict):
+    """Display batch generation results."""
+    st.subheader(t("batch.results"))
+
+    # Show stats
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric(t("batch.successful"), data["successful_count"])
+    with col2:
+        st.metric(t("batch.failed"), data["failed_count"])
+    with col3:
+        st.metric(t("batch.total_time"), f"{data['total_time']:.1f}s")
+
+    st.divider()
+
+    # Display images in grid
+    images = data.get("images", [])
+    if images:
+        cols = st.columns(min(len(images), 4))
+
+        for idx, image in enumerate(images):
+            col_idx = idx % 4
+            with cols[col_idx]:
+                st.image(image, width="stretch")
+
+                buf = BytesIO()
+                image.save(buf, format="PNG")
                 st.download_button(
-                    f"📦 {t('batch.download_all')} ({len(successful)} {t('batch.images')})",
-                    data=zip_buffer.getvalue(),
-                    file_name=f"batch_{timestamp}.zip",
-                    mime="application/zip",
-                    key="download_batch_zip",
+                    f"⬇️ #{idx + 1}",
+                    data=buf.getvalue(),
+                    file_name=f"batch_{idx + 1}.png",
+                    mime="image/png",
+                    key=f"download_batch_{idx}",
                     width="stretch"
                 )
+
+    # Show errors if any
+    failed_errors = data.get("failed_errors", [])
+    if failed_errors:
+        with st.expander(t("batch.errors"), expanded=False):
+            for idx, error in enumerate(failed_errors):
+                st.write(f"Image {idx + 1}: {error}")
+
+    # Download all as ZIP
+    if len(images) > 1:
+        st.divider()
+
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            prompt = data.get("prompt", "batch")
+            for idx, image in enumerate(images):
+                img_buffer = BytesIO()
+                image.save(img_buffer, format="PNG")
+                prompt_slug = "".join(c if c.isalnum() or c == " " else "" for c in prompt[:20])
+                prompt_slug = "_".join(prompt_slug.split())
+                zip_file.writestr(f"batch_{idx + 1}_{prompt_slug}.png", img_buffer.getvalue())
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        st.download_button(
+            f"📦 {t('batch.download_all')} ({len(images)} {t('batch.images')})",
+            data=zip_buffer.getvalue(),
+            file_name=f"batch_{timestamp}.zip",
+            mime="application/zip",
+            key="download_batch_zip",
+            width="stretch"
+        )

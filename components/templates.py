@@ -180,32 +180,6 @@ def render_templates(t: Translator, settings: dict, generator: ImageGenerator):
                 icon = "🛡️" if result.safety_blocked else "❌"
                 st.error(f"{icon} {t('basic.error')}: {get_friendly_error_message(result.error, t)}")
             elif result.image:
-                st.subheader(t("basic.result"))
-
-                if result.thinking:
-                    with st.expander(t("basic.thinking_label"), expanded=False):
-                        st.write(result.thinking)
-
-                st.image(result.image, width="stretch")
-
-                if result.text:
-                    with st.expander(t("basic.response_label"), expanded=True):
-                        st.write(result.text)
-
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    st.caption(f"⏱️ {t('basic.time_label')}: {result.duration:.2f} {t('basic.seconds')}")
-                with col2:
-                    buf = BytesIO()
-                    result.image.save(buf, format="PNG")
-                    st.download_button(
-                        f"⬇️ {t('basic.download_btn')}",
-                        data=buf.getvalue(),
-                        file_name="template_generated.png",
-                        mime="image/png",
-                        width="stretch"
-                    )
-
                 # Save to history using sync manager
                 history_sync = get_history_sync()
                 filename = history_sync.save_to_history(
@@ -218,8 +192,57 @@ def render_templates(t: Translator, settings: dict, generator: ImageGenerator):
                     thinking=result.thinking,
                 )
 
+                # Store as last result for this mode
+                st.session_state.template_last_result = {
+                    "image": result.image,
+                    "text": result.text,
+                    "thinking": result.thinking,
+                    "duration": result.duration,
+                    "filename": filename,
+                    "prompt": final_prompt,
+                }
+
                 # Toast notification for save success
                 if filename:
                     st.toast(t("toast.image_saved", filename=filename), icon="✅")
+
+                # Display result
+                _display_template_result(t, st.session_state.template_last_result)
             else:
                 st.warning(f"⚠️ {t('basic.no_image')}")
+
+    # Show last generated result from current session
+    elif not is_generating and "template_last_result" in st.session_state and st.session_state.template_last_result:
+        _display_template_result(t, st.session_state.template_last_result)
+
+
+def _display_template_result(t: Translator, item: dict):
+    """Display a template generation result."""
+    st.subheader(t("basic.result"))
+
+    if item.get("thinking"):
+        with st.expander(t("basic.thinking_label"), expanded=False):
+            st.write(item["thinking"])
+
+    st.image(item["image"], width="stretch")
+
+    if item.get("text"):
+        with st.expander(t("basic.response_label"), expanded=True):
+            st.write(item["text"])
+
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.caption(f"⏱️ {t('basic.time_label')}: {item['duration']:.2f} {t('basic.seconds')}")
+    with col2:
+        buf = BytesIO()
+        item["image"].save(buf, format="PNG")
+        filename = item.get("filename", "template_generated.png")
+        if "/" in filename:
+            filename = filename.split("/")[-1]
+        st.download_button(
+            f"⬇️ {t('basic.download_btn')}",
+            data=buf.getvalue(),
+            file_name=filename,
+            mime="image/png",
+            width="stretch"
+        )

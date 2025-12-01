@@ -162,16 +162,24 @@ def render_basic_generation(t: Translator, settings: dict, generator: ImageGener
                 if filename:
                     st.toast(t("toast.image_saved", filename=filename), icon="✅")
 
+                # Store as last result for this mode
+                st.session_state.basic_last_result = {
+                    "image": result.image,
+                    "text": result.text,
+                    "thinking": result.thinking,
+                    "duration": result.duration,
+                    "filename": filename,
+                }
+
                 # Display result
                 _display_result(t, result.image, result.text, result.thinking,
                                result.duration, filename)
             else:
                 st.warning(f"⚠️ {t('basic.no_image')}")
 
-    # Show last generated image if exists (when not generating)
-    elif not is_generating and "history" in st.session_state and st.session_state.history:
-        last = st.session_state.history[0]
-        _display_history_item(t, last)
+    # Show last generated image from current session (only for basic mode)
+    elif not is_generating and "basic_last_result" in st.session_state and st.session_state.basic_last_result:
+        _display_history_item(t, st.session_state.basic_last_result)
 
 
 def _display_result(t: Translator, image, text: str, thinking: str,

@@ -110,26 +110,6 @@ def render_style_transfer_mode(t: Translator, settings: dict, generator: ImageGe
                 icon = "🛡️" if result.safety_blocked else "❌"
                 st.error(f"{icon} {t('basic.error')}: {get_friendly_error_message(result.error, t)}")
             elif result.image:
-                st.subheader(t("basic.result"))
-                st.image(result.image, width="stretch")
-
-                if result.text:
-                    st.write(result.text)
-
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    st.caption(f"⏱️ {t('basic.time_label')}: {result.duration:.2f} {t('basic.seconds')}")
-                with col2:
-                    buf = BytesIO()
-                    result.image.save(buf, format="PNG")
-                    st.download_button(
-                        f"⬇️ {t('basic.download_btn')}",
-                        data=buf.getvalue(),
-                        file_name="style_transfer.png",
-                        mime="image/png",
-                        width="stretch"
-                    )
-
                 # Save to history using sync manager
                 history_sync = get_history_sync()
                 filename = history_sync.save_to_history(
@@ -141,9 +121,51 @@ def render_style_transfer_mode(t: Translator, settings: dict, generator: ImageGe
                     text_response=result.text,
                 )
 
-                # Success notification (keep as toast since it's positive feedback)
+                # Store as last result for this mode
+                st.session_state.style_last_result = {
+                    "image": result.image,
+                    "text": result.text,
+                    "duration": result.duration,
+                    "filename": filename,
+                    "prompt": prompt,
+                }
+
+                # Success notification
                 if filename:
                     st.toast(t("toast.image_saved", filename=filename), icon="✅")
+
+                # Display result
+                _display_style_result(t, st.session_state.style_last_result)
+
+    # Show last generated result from current session
+    elif not is_generating and "style_last_result" in st.session_state and st.session_state.style_last_result:
+        _display_style_result(t, st.session_state.style_last_result)
+
+
+def _display_style_result(t: Translator, item: dict):
+    """Display a style transfer result."""
+    st.subheader(t("basic.result"))
+    st.image(item["image"], width="stretch")
+
+    if item.get("text"):
+        st.write(item["text"])
+
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.caption(f"⏱️ {t('basic.time_label')}: {item['duration']:.2f} {t('basic.seconds')}")
+    with col2:
+        buf = BytesIO()
+        item["image"].save(buf, format="PNG")
+        filename = item.get("filename", "style_transfer.png")
+        if "/" in filename:
+            filename = filename.split("/")[-1]
+        st.download_button(
+            f"⬇️ {t('basic.download_btn')}",
+            data=buf.getvalue(),
+            file_name=filename,
+            mime="image/png",
+            width="stretch"
+        )
 
 
 def render_blend_mode(t: Translator, settings: dict, generator: ImageGenerator):
@@ -213,26 +235,6 @@ def render_blend_mode(t: Translator, settings: dict, generator: ImageGenerator):
                 icon = "🛡️" if result.safety_blocked else "❌"
                 st.error(f"{icon} {t('basic.error')}: {get_friendly_error_message(result.error, t)}")
             elif result.image:
-                st.subheader(t("basic.result"))
-                st.image(result.image, width="stretch")
-
-                if result.text:
-                    st.write(result.text)
-
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    st.caption(f"⏱️ {t('basic.time_label')}: {result.duration:.2f} {t('basic.seconds')}")
-                with col2:
-                    buf = BytesIO()
-                    result.image.save(buf, format="PNG")
-                    st.download_button(
-                        f"⬇️ {t('basic.download_btn')}",
-                        data=buf.getvalue(),
-                        file_name="blended_image.png",
-                        mime="image/png",
-                        width="stretch"
-                    )
-
                 # Save to history using sync manager
                 history_sync = get_history_sync()
                 filename = history_sync.save_to_history(
@@ -244,6 +246,48 @@ def render_blend_mode(t: Translator, settings: dict, generator: ImageGenerator):
                     text_response=result.text,
                 )
 
-                # Success notification (keep as toast since it's positive feedback)
+                # Store as last result for this mode
+                st.session_state.blend_last_result = {
+                    "image": result.image,
+                    "text": result.text,
+                    "duration": result.duration,
+                    "filename": filename,
+                    "prompt": prompt,
+                }
+
+                # Success notification
                 if filename:
                     st.toast(t("toast.image_saved", filename=filename), icon="✅")
+
+                # Display result
+                _display_blend_result(t, st.session_state.blend_last_result)
+
+    # Show last generated result from current session
+    elif not is_generating and "blend_last_result" in st.session_state and st.session_state.blend_last_result:
+        _display_blend_result(t, st.session_state.blend_last_result)
+
+
+def _display_blend_result(t: Translator, item: dict):
+    """Display a blend result."""
+    st.subheader(t("basic.result"))
+    st.image(item["image"], width="stretch")
+
+    if item.get("text"):
+        st.write(item["text"])
+
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.caption(f"⏱️ {t('basic.time_label')}: {item['duration']:.2f} {t('basic.seconds')}")
+    with col2:
+        buf = BytesIO()
+        item["image"].save(buf, format="PNG")
+        filename = item.get("filename", "blended_image.png")
+        if "/" in filename:
+            filename = filename.split("/")[-1]
+        st.download_button(
+            f"⬇️ {t('basic.download_btn')}",
+            data=buf.getvalue(),
+            file_name=filename,
+            mime="image/png",
+            width="stretch"
+        )
