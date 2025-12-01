@@ -1,7 +1,8 @@
 # Nano Banana Lab 🍌
 
-[![English](https://img.shields.io/badge/lang-English-blue.svg)](README.md)
-[![中文](https://img.shields.io/badge/lang-中文-red.svg)](README.zh-CN.md)
+[English](README.md) | [中文](README.zh-CN.md)
+
+---
 
 A learning project exploring Google Gemini 3 Pro Image (Nano Banana Pro) capabilities for AI image generation.
 
@@ -21,6 +22,7 @@ A learning project exploring Google Gemini 3 Pro Image (Nano Banana Pro) capabil
 A full-featured web interface for interactive image generation.
 
 ```bash
+# Run the web UI
 streamlit run app.py
 ```
 
@@ -38,6 +40,59 @@ streamlit run app.py
 - 📦 **ZIP Download** - Download all batch images in one file
 - 📜 **History** - View and download previously generated images
 
+
+## Function Details
+
+### 01_basic.py - Basic Image Generation
+```python
+generate_basic_image(prompt, aspect_ratio="16:9")
+```
+- Generate images from text prompts
+- Supports various aspect ratios: `16:9`, `1:1`, `9:16`, etc.
+- Output: `outputs/01_basic.png`
+
+### 02_thinking.py - Thinking Process Visualization
+```python
+generate_with_thinking(prompt, aspect_ratio="16:9")
+```
+- Enable model's thinking feature with `ThinkingConfig(include_thoughts=True)`
+- Display model's reasoning process before image generation
+- Output: `outputs/02_thinking.png`
+
+### 03_search.py - Search Grounding
+```python
+generate_with_search(prompt, aspect_ratio="16:9")
+```
+- Integrate real-time Google Search data using `tools=[{"google_search": {}}]`
+- Generate images with up-to-date information (weather, news, etc.)
+- Output: `outputs/03_search.png`
+
+### 04_4k.py - 4K Ultra HD Generation
+```python
+generate_4k_image(prompt, resolution="4K", aspect_ratio="16:9")
+```
+- Support multiple resolutions: `1K`, `2K`, `4K`
+- 4K generates 4096x4096 images
+- Output: `outputs/04_4K.png`
+
+### 05_multilang.py - Multilingual Capabilities
+```python
+generate_multilingual_image(prompt, aspect_ratio="16:9", filename="05_multilang.png")
+chat_and_translate()
+```
+- Multi-turn conversation mode for image translation
+- Maintain visual consistency across languages
+- Output: `outputs/05_multilang_en.png`, `outputs/05_multilang_zh.png`
+
+### 06_blend.py - Advanced Image Blending
+```python
+blend_images(prompt, image_paths, aspect_ratio="16:9")
+demo_style_transfer()
+```
+- Blend up to 14 images (Pro model)
+- Style transfer capabilities
+- Output: `outputs/06_base_photo.png`, `outputs/06_style_ref.png`, `outputs/06_blend.png`
+
 ## Quick Start
 
 ### 1. Environment Setup
@@ -54,63 +109,21 @@ pip install -r requirements.txt
 ### 2. Configure API Key
 
 ```bash
+# Copy environment template
 cp .env.example .env
-# Edit .env and add your API Key
+
+# Edit .env file and add your API Key
 # Get it from: https://aistudio.google.com/app/apikey
 ```
 
 ### 3. Run Experiments
 
 ```bash
+# Run basic generation experiment
 python experiments/01_basic.py
+
 # Generated images are saved in outputs/ directory
 ```
-
-## Function Details
-
-### 01_basic.py - Basic Image Generation
-```python
-generate_basic_image(prompt, aspect_ratio="16:9")
-```
-- Generate images from text prompts
-- Supports various aspect ratios: `16:9`, `1:1`, `9:16`, etc.
-
-### 02_thinking.py - Thinking Process Visualization
-```python
-generate_with_thinking(prompt, aspect_ratio="16:9")
-```
-- Enable model's thinking feature with `ThinkingConfig(include_thoughts=True)`
-- Display model's reasoning process before image generation
-
-### 03_search.py - Search Grounding
-```python
-generate_with_search(prompt, aspect_ratio="16:9")
-```
-- Integrate real-time Google Search data using `tools=[{"google_search": {}}]`
-- Generate images with up-to-date information (weather, news, etc.)
-
-### 04_4k.py - 4K Ultra HD Generation
-```python
-generate_4k_image(prompt, resolution="4K", aspect_ratio="16:9")
-```
-- Support multiple resolutions: `1K`, `2K`, `4K`
-- 4K generates 4096x4096 images
-
-### 05_multilang.py - Multilingual Capabilities
-```python
-generate_multilingual_image(prompt, aspect_ratio="16:9", filename="05_multilang.png")
-chat_and_translate()
-```
-- Multi-turn conversation mode for image translation
-- Maintain visual consistency across languages
-
-### 06_blend.py - Advanced Image Blending
-```python
-blend_images(prompt, image_paths, aspect_ratio="16:9")
-demo_style_transfer()
-```
-- Blend up to 14 images (Pro model)
-- Style transfer capabilities
 
 ## Output Gallery
 
@@ -120,39 +133,67 @@ demo_style_transfer()
 
 ### 02 - Thinking Process
 ![Thinking Process](outputs/02_thinking.png)
-*Viral-worthy image generated with visible AI reasoning process*
+*Viral-worthy image generated with visible AI reasoning process - a dog working at a desk*
 
 ### 03 - Search Grounding
 ![Search Grounding](outputs/03_search.png)
-*Real-time weather forecast visualization*
+*Real-time weather forecast for Guangdong Province, China - 5-day forecast visualization*
 
 ### 04 - 4K Ultra HD
 ![4K Generation](outputs/04_4K.png)
-*Four seasons of an oak tree - 4096x4096 ultra-high resolution*
+*Four seasons of an oak tree - 4096x4096 ultra-high resolution image*
 
-### 05 - Multilingual
-| English | Chinese |
-|---------|---------|
-| ![English](outputs/05_multilang_en.png) | ![Chinese](outputs/05_multilang_zh.png) |
+### 05 - Multilingual (English)
+![Multilingual English](outputs/05_multilang_en.png)
+*Coffee journey infographic - English version*
+
+### 05 - Multilingual (Chinese)
+![Multilingual Chinese](outputs/05_multilang_zh.png)
+*Coffee journey infographic - Chinese version (same layout, translated content)*
 
 ### 06 - Image Blending
+
 | Base Photo | Style Reference | Blended Result |
 |------------|-----------------|----------------|
 | ![Base](outputs/06_base_photo.png) | ![Style](outputs/06_style_ref.png) | ![Blend](outputs/06_blend.png) |
+| *Cat on windowsill* | *Abstract watercolor* | *Watercolor style cat* |
+
 
 ## Project Structure
 
 ```
 nano-banana-lab/
+├── .env.example        # Environment template
+├── .env                # Your API Key (do not commit)
+├── requirements.txt    # Python dependencies
+├── config.py           # Client initialization & timing instrumentation
 ├── app.py              # Streamlit Web UI entry point
-├── config.py           # Client initialization & timing
 ├── components/         # UI components
+│   ├── sidebar.py      # Settings & API key management
+│   ├── basic.py        # Basic generation mode
+│   ├── chat.py         # Chat & refine mode
+│   ├── batch.py        # Batch generation mode
+│   ├── blend.py        # Style transfer mode
+│   ├── search.py       # Search grounding mode
+│   ├── templates.py    # Prompt templates mode
+│   └── history.py      # Generation history
 ├── services/           # Backend services
+│   ├── generator.py    # Async image generator
+│   └── chat_session.py # Chat session manager
 ├── i18n/               # Internationalization
+│   ├── en.json         # English translations
+│   └── zh.json         # Chinese translations
 ├── experiments/        # Experiment scripts
+│   ├── 01_basic.py     # Basic text-to-image
+│   ├── 02_thinking.py  # Thinking process visualization
+│   ├── 03_search.py    # Search-grounded generation
+│   ├── 04_4k.py        # High-resolution generation
+│   ├── 05_multilang.py # Multilingual support
+│   └── 06_blend.py     # Image blending & style transfer
 ├── outputs/            # Generated images
 ├── Dockerfile          # Docker configuration
-└── docker-compose.yml  # Docker Compose config
+├── docker-compose.yml  # Docker Compose config
+└── README.md
 ```
 
 ## Pricing Reference
