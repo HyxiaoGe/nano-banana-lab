@@ -167,11 +167,8 @@ def render_basic_generation(t: Translator, settings: dict, generator: ImageGener
                 "filename": filename,
             }
 
-            # Display result
-            _display_result(t, result.image, result.text, result.thinking,
-                           result.duration, filename)
-        else:
-            st.warning(f"⚠️ {t('basic.no_image')}")
+        # Rerun to update button state and show result
+        st.rerun()
 
     # Show last generated image from current session (only for basic mode)
     elif not is_generating and "basic_last_result" in st.session_state and st.session_state.basic_last_result:

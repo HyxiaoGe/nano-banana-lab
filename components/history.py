@@ -49,6 +49,8 @@ def _get_mode_label(mode: str, t: Translator) -> str:
 
 def _init_history_state():
     """Initialize history-related session state with defaults."""
+    user_logged_in = is_authenticated()
+    
     defaults = {
         "history_page": 1,
         "history_search": "",
@@ -57,11 +59,22 @@ def _init_history_state():
         "history_sort": "newest",
         "history_date_range": "all",
         "history_grid_cols": DEFAULT_GRID_COLS,
-        "history_data_source": "personal" if is_authenticated() else "shared",
     }
     for key, default_value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = default_value
+
+    # Handle login state changes - track previous login state
+    prev_logged_in = st.session_state.get("_history_prev_logged_in")
+    login_state_changed = prev_logged_in is not None and prev_logged_in != user_logged_in
+    st.session_state["_history_prev_logged_in"] = user_logged_in
+
+    # Set data source based on login state, or reset if login state changed
+    if "history_data_source" not in st.session_state or login_state_changed:
+        st.session_state["history_data_source"] = "personal" if user_logged_in else "shared"
+        # Clear loaded flags to force reload
+        st.session_state.pop("history_personal_loaded", None)
+        st.session_state.pop("history_shared_loaded", None)
 
     # Validate per_page value (fix corrupted state)
     if st.session_state.get("history_per_page") not in PER_PAGE_OPTIONS:
@@ -318,12 +331,12 @@ def render_history(t: Translator):
     history_loaded_key = f"{history_key}_loaded"
 
     if needs_reload or not st.session_state.get(history_loaded_key):
-        # Clear the specific history list before reloading
-        st.session_state[history_key] = []
-        # Point the global "history" to the correct list for sync_from_disk
-        st.session_state.history = st.session_state[history_key]
+        # Clear the global history before reloading
+        st.session_state.history = []
         with st.spinner(t("history.loading")):
             history_sync.sync_from_disk(force=True)
+        # Copy loaded data to the specific history key
+        st.session_state[history_key] = st.session_state.history.copy()
         st.session_state[history_loaded_key] = True
         st.session_state["_history_needs_reload"] = False
 
@@ -470,9 +483,7 @@ def render_history(t: Translator):
     per_page = st.session_state.get("history_per_page", DEFAULT_PER_PAGE)
     if per_page not in PER_PAGE_OPTIONS:
         per_page = DEFAULT_PER_PAGE
-    
-    print(f"[History Debug] items={len(filtered_history)}, per_page={per_page}, page={st.session_state.history_page}")
-    
+        
     paginated_items, total_pages = _get_paginated_items(
         filtered_history,
         st.session_state.history_page,
