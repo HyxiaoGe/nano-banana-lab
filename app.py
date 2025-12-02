@@ -37,7 +37,6 @@ from components import (
     render_history,
     render_style_transfer,
     render_search_generation,
-    render_templates,
     render_batch_generation,
 )
 from components.sidebar import get_current_api_key
@@ -153,8 +152,6 @@ def main():
         render_style_transfer(t, settings, generator)
     elif mode == "search":
         render_search_generation(t, settings, generator)
-    elif mode == "templates":
-        render_templates(t, settings, generator)
 
 
 if __name__ == "__main__":

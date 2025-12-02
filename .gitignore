@@ -211,3 +211,11 @@ __marimo__/
 
 # Generated images from Web UI
 outputs/web/
+
+# Prompt library data (optional - commit if you want to share prompts)
+data/prompts/*.json
+data/prompts/favorites/
+
+# Keep the directory structure
+!data/prompts/.gitkeep
+!data/prompts/favorites/.gitkeep

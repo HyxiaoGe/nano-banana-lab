@@ -35,10 +35,13 @@ streamlit run app.py
   - Batch Generation - Generate multiple variations with progress tracking
   - Style Transfer - Apply artistic styles between images
   - Search Grounding - Generate images with real-time search data
-  - Templates - Start with curated prompt templates
+  - **Templates - AI-powered prompt library with favorites** ✨ NEW
 - 📊 **Cost Estimation** - See estimated costs before batch generation
 - 📦 **ZIP Download** - Download all batch images in one file
 - 📜 **History** - View and download previously generated images
+- 🤖 **AI Prompt Generator** - Generate custom prompts with AI ✨ NEW
+- ⭐ **Favorites System** - Save and organize your favorite prompts ✨ NEW
+- ☁️ **Cloud Sync** - Sync prompts to Cloudflare R2 (optional) ✨ NEW
 
 
 ## Function Details
@@ -92,6 +95,30 @@ demo_style_transfer()
 - Blend up to 14 images (Pro model)
 - Style transfer capabilities
 - Output: `outputs/06_base_photo.png`, `outputs/06_style_ref.png`, `outputs/06_blend.png`
+
+## ✨ New: AI Prompt Library
+
+The project now includes a powerful AI-driven prompt library system:
+
+### Features
+- 🤖 **AI Generation** - Generate high-quality prompts using Gemini
+- 📚 **Organized Library** - Browse prompts by category (portrait, landscape, food, etc.)
+- ⭐ **Favorites** - Save and organize your favorite prompts
+- 🔍 **Search** - Find prompts by keywords
+- ☁️ **Cloud Sync** - Optional Cloudflare R2 integration
+- 🌐 **Multi-language** - Generate prompts in English or Chinese
+
+### Quick Start with Prompts
+
+```bash
+# Initialize the prompt library with AI-generated prompts
+python scripts/init_prompts.py
+
+# Test the prompt system
+python scripts/test_prompts.py
+```
+
+See [PROMPTS_QUICKSTART.md](PROMPTS_QUICKSTART.md) for detailed guide.
 
 ## Quick Start
 

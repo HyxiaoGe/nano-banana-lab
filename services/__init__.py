@@ -29,6 +29,8 @@ from .auth import (
     get_user_id,
     require_auth,
 )
+from .prompt_generator import PromptGenerator, get_prompt_generator
+from .prompt_storage import PromptStorage, get_prompt_storage, get_current_user_prompt_storage
 
 __all__ = [
     "ImageGenerator",
@@ -64,4 +66,9 @@ __all__ = [
     "get_current_user",
     "get_user_id",
     "require_auth",
+    "PromptGenerator",
+    "get_prompt_generator",
+    "PromptStorage",
+    "get_prompt_storage",
+    "get_current_user_prompt_storage",
 ]

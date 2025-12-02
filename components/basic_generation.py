@@ -1,5 +1,5 @@
 """
-Basic image generation component.
+Basic image generation component with prompt library integration.
 """
 import time
 from io import BytesIO
@@ -10,6 +10,8 @@ from services import (
     GenerationStateManager,
     get_current_user_history_sync,
     get_friendly_error_message,
+    get_current_user_prompt_storage,
+    get_prompt_generator,
 )
 
 
@@ -27,14 +29,8 @@ def render_basic_generation(t: Translator, settings: dict, generator: ImageGener
 
     st.header(t("basic.title"))
 
-    # Example prompts
-    with st.expander(t("basic.examples.title"), expanded=False):
-        examples = t("basic.examples.items")
-        if isinstance(examples, list):
-            for example in examples:
-                if st.button(example, key=f"example_{hash(example)}", width="stretch"):
-                    st.session_state.prompt_input = example
-                    st.rerun()
+    # Prompt library integration
+    _render_prompt_library_section(t, generator)
 
     # Prompt input
     prompt = st.text_area(
@@ -45,14 +41,9 @@ def render_basic_generation(t: Translator, settings: dict, generator: ImageGener
         value=st.session_state.get("prompt_input", "")
     )
 
-    # Show tips when prompt is empty
+    # Show hint when prompt is empty
     if not prompt.strip():
         st.caption(f"💡 {t('basic.empty_hint')}")
-        with st.expander(t("basic.tip_title"), expanded=False):
-            tips = t("basic.tips")
-            if isinstance(tips, list):
-                for tip in tips:
-                    st.markdown(f"- {tip}")
 
     # Check generation state
     is_generating = GenerationStateManager.is_generating()
@@ -242,3 +233,427 @@ def _display_history_item(t: Translator, item: dict):
     if item.get("text"):
         with st.expander(t("basic.response_label"), expanded=False):
             st.write(item["text"])
+
+
+def _render_prompt_library_section(t: Translator, generator: ImageGenerator):
+    """Render the prompt library integration section."""
+    # Initialize services
+    prompt_storage = get_current_user_prompt_storage()
+    prompt_gen = get_prompt_generator(generator._api_key)
+
+    # Tabs for different prompt sources
+    tab1, tab2 = st.tabs([
+        "📚 " + t("basic.library_tab", default="Prompt Library"),
+        "✨ " + t("basic.ai_tools_tab", default="AI Tools")
+    ])
+
+    # Tab 1: Prompt Library (includes favorites)
+    with tab1:
+        _render_library_with_favorites(t, prompt_storage)
+
+    # Tab 2: AI Tools (enhance + generate)
+    with tab2:
+        _render_ai_tools(t, prompt_gen, prompt_storage)
+
+
+def _render_library_with_favorites(t: Translator, storage):
+    """Render prompt library with favorites toggle."""
+    import random
+    
+    # Get current language
+    current_lang = st.session_state.get("language", "en")
+    
+    # Toggle between Library and Favorites
+    view_mode = st.radio(
+        "View",
+        options=["library", "favorites"],
+        format_func=lambda x: {"library": "📚 " + t("basic.library_view", default="Library"), 
+                               "favorites": "⭐ " + t("basic.favorites_view", default="Favorites")}[x],
+        horizontal=True,
+        label_visibility="collapsed"
+    )
+    
+    if view_mode == "library":
+        _render_library_view(t, storage, current_lang)
+    else:
+        _render_favorites_view(t, storage)
+
+
+def _render_library_view(t: Translator, storage, current_lang):
+    """Render the library view."""
+    import random
+    
+    st.caption(t("basic.library_caption", default="Browse prompts by category"))
+
+    # Category selector and refresh button
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        categories = storage.get_all_categories(language=current_lang)
+        if not categories:
+            st.info(t("basic.library_empty", default="No prompts yet. Generate some in AI Tools!"))
+            return
+
+        # Category name translation mapping
+        category_names = {
+            "portrait": t("templates.categories.portrait", default="Portrait"),
+            "product": t("templates.categories.product", default="Product"),
+            "landscape": t("templates.categories.landscape", default="Landscape"),
+            "art": t("templates.categories.art", default="Art"),
+            "food": t("templates.categories.food", default="Food"),
+            "architecture": t("templates.categories.architecture", default="Architecture"),
+        }
+        
+        selected_category = st.selectbox(
+            t("basic.select_category", default="Category"),
+            options=categories,
+            format_func=lambda x: category_names.get(x, x.title()),
+            label_visibility="collapsed",
+            key="lib_category_select"
+        )
+    
+    with col2:
+        if st.button("🔄", key="lib_refresh", help=t("basic.refresh_prompts", default="Refresh"), use_container_width=True):
+            if "lib_shuffle_seed" not in st.session_state:
+                st.session_state.lib_shuffle_seed = 0
+            st.session_state.lib_shuffle_seed += 1
+            st.rerun()
+
+    # Load prompts
+    prompts = storage.load_category_prompts(selected_category, language=current_lang)
+    if not prompts:
+        st.info(t("basic.category_empty", default="No prompts in this category"))
+        return
+
+    # Shuffle prompts based on seed
+    seed = st.session_state.get("lib_shuffle_seed", 0)
+    random.seed(seed)
+    shuffled_prompts = prompts.copy()
+    random.shuffle(shuffled_prompts)
+
+    # Display prompts (show first 5)
+    st.caption(f"📊 {len(prompts)} {t('basic.prompts_available', default='prompts available')}")
+    
+    for idx, prompt_data in enumerate(shuffled_prompts[:5]):
+        prompt_text = prompt_data.get("prompt", "")
+        col1, col2, col3 = st.columns([3, 1, 1])
+        with col1:
+            st.caption(f"{idx + 1}. {prompt_text[:80]}{'...' if len(prompt_text) > 80 else ''}")
+        with col2:
+            if st.button("✨", key=f"lib_use_{selected_category}_{seed}_{idx}", help=t("basic.use_prompt", default="Use")):
+                st.session_state.prompt_input = prompt_text
+                st.rerun()
+        with col3:
+            if st.button("⭐", key=f"lib_fav_{selected_category}_{seed}_{idx}", help=t("basic.add_favorite", default="Favorite")):
+                if storage.add_to_favorites(prompt_data):
+                    st.toast(t("basic.added_favorite", default="Added to favorites!"), icon="⭐")
+
+
+def _render_favorites_view(t: Translator, storage):
+    """Render the favorites view."""
+    import random
+    
+    st.caption(t("basic.favorites_caption", default="Your favorite prompts"))
+
+    # Refresh button
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.caption("")  # Spacer
+    with col2:
+        if st.button("🔄", key="fav_refresh", help=t("basic.refresh_prompts", default="Refresh"), use_container_width=True):
+            if "fav_shuffle_seed" not in st.session_state:
+                st.session_state.fav_shuffle_seed = 0
+            st.session_state.fav_shuffle_seed += 1
+            st.rerun()
+
+    favorites = storage.get_favorites()
+    if not favorites:
+        st.info(t("basic.favorites_empty", default="No favorites yet. Star prompts in Library!"))
+        return
+
+    # Shuffle favorites
+    seed = st.session_state.get("fav_shuffle_seed", 0)
+    random.seed(seed)
+    shuffled_favs = favorites.copy()
+    random.shuffle(shuffled_favs)
+
+    st.caption(f"⭐ {len(favorites)} {t('basic.favorites_count', default='favorites')}")
+    
+    for idx, fav in enumerate(shuffled_favs[:5]):
+        prompt_text = fav.get("prompt", "")
+        col1, col2, col3 = st.columns([3, 1, 1])
+        with col1:
+            st.caption(f"{idx + 1}. {prompt_text[:80]}{'...' if len(prompt_text) > 80 else ''}")
+        with col2:
+            if st.button("✨", key=f"fav_use_{seed}_{idx}", help=t("basic.use_prompt", default="Use")):
+                st.session_state.prompt_input = prompt_text
+                st.rerun()
+        with col3:
+            if st.button("🗑️", key=f"fav_del_{seed}_{idx}", help=t("basic.remove_favorite", default="Remove")):
+                if storage.remove_from_favorites(prompt_text):
+                    st.toast(t("basic.removed_favorite", default="Removed from favorites"), icon="🗑️")
+                    st.rerun()
+
+
+def _render_library_quick_access_old(t: Translator, storage):
+    """Render quick access to prompt library."""
+    import random
+    
+    # Get current language
+    current_lang = st.session_state.get("language", "en")
+    
+    st.caption(t("basic.library_caption", default="Browse prompts by category"))
+
+    # Category selector and refresh button
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        categories = storage.get_all_categories(language=current_lang)
+        if not categories:
+            st.info(t("basic.library_empty", default="No prompts yet. Go to Templates to generate some!"))
+            return
+
+        # Category name translation mapping
+        category_names = {
+            "portrait": t("templates.categories.portrait", default="Portrait"),
+            "product": t("templates.categories.product", default="Product"),
+            "landscape": t("templates.categories.landscape", default="Landscape"),
+            "art": t("templates.categories.art", default="Art"),
+            "food": t("templates.categories.food", default="Food"),
+            "architecture": t("templates.categories.architecture", default="Architecture"),
+        }
+        
+        selected_category = st.selectbox(
+            t("basic.select_category", default="Category"),
+            options=categories,
+            format_func=lambda x: category_names.get(x, x.title()),
+            label_visibility="collapsed",
+            key="lib_category_select"
+        )
+    
+    with col2:
+        if st.button("🔄", key="lib_refresh", help=t("basic.refresh_prompts", default="Refresh"), use_container_width=True):
+            # Increment shuffle seed to get different prompts
+            if "lib_shuffle_seed" not in st.session_state:
+                st.session_state.lib_shuffle_seed = 0
+            st.session_state.lib_shuffle_seed += 1
+            st.rerun()
+
+    # Load prompts
+    prompts = storage.load_category_prompts(selected_category, language=current_lang)
+    if not prompts:
+        st.info(t("basic.category_empty", default="No prompts in this category"))
+        return
+
+    # Shuffle prompts based on seed
+    seed = st.session_state.get("lib_shuffle_seed", 0)
+    random.seed(seed)
+    shuffled_prompts = prompts.copy()
+    random.shuffle(shuffled_prompts)
+
+    # Display prompts (show first 5)
+    st.caption(f"📊 {len(prompts)} {t('basic.prompts_available', default='prompts available')}")
+    
+    for idx, prompt_data in enumerate(shuffled_prompts[:5]):
+        prompt_text = prompt_data.get("prompt", "")
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            st.caption(f"{idx + 1}. {prompt_text[:80]}{'...' if len(prompt_text) > 80 else ''}")
+        with col2:
+            if st.button("✨", key=f"lib_use_{selected_category}_{seed}_{idx}", help=t("basic.use_prompt", default="Use")):
+                st.session_state.prompt_input = prompt_text
+                st.rerun()
+
+
+def _render_ai_tools(t: Translator, prompt_gen, storage):
+    """Render AI tools: enhance and generate."""
+    # Get current language
+    current_lang = st.session_state.get("language", "en")
+    
+    # Sub-tabs for AI tools
+    ai_tab1, ai_tab2 = st.tabs([
+        "✨ " + t("basic.enhance_tool", default="Enhance Prompt"),
+        "🎲 " + t("basic.generate_tool", default="Generate New")
+    ])
+    
+    with ai_tab1:
+        _render_ai_enhance_section(t, prompt_gen)
+    
+    with ai_tab2:
+        _render_generate_new_prompts(t, prompt_gen, storage, current_lang)
+
+
+def _render_generate_new_prompts(t: Translator, prompt_gen, storage, current_lang):
+    """Render the generate new prompts section."""
+    st.caption(t("basic.generate_caption", default="Generate new prompts with AI"))
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Category name translation mapping
+        category_names = {
+            "portrait": t("templates.categories.portrait", default="Portrait"),
+            "product": t("templates.categories.product", default="Product"),
+            "landscape": t("templates.categories.landscape", default="Landscape"),
+            "art": t("templates.categories.art", default="Art"),
+            "food": t("templates.categories.food", default="Food"),
+            "architecture": t("templates.categories.architecture", default="Architecture"),
+        }
+        
+        categories = ["portrait", "product", "landscape", "art", "food", "architecture"]
+        gen_category = st.selectbox(
+            t("basic.generate_category", default="Category"),
+            options=categories,
+            format_func=lambda x: category_names.get(x, x.title())
+        )
+    
+    with col2:
+        gen_style = st.text_input(
+            t("basic.generate_style", default="Style (optional)"),
+            placeholder=t("basic.generate_style_placeholder", default="e.g., photorealistic, vintage")
+        )
+    
+    gen_count = st.slider(
+        t("basic.generate_count", default="Number of prompts"),
+        min_value=5,
+        max_value=20,
+        value=10
+    )
+    
+    if st.button("🚀 " + t("basic.generate_prompts_btn", default="Generate Prompts"), type="primary", use_container_width=True):
+        with st.spinner(t("basic.generating_prompts", default="Generating prompts with AI...")):
+            try:
+                prompts = prompt_gen.generate_category_prompts(
+                    category=gen_category,
+                    style=gen_style if gen_style else None,
+                    count=gen_count,
+                    language=current_lang
+                )
+                
+                if prompts:
+                    st.session_state.generated_prompts_new = prompts
+                    st.session_state.generated_category_new = gen_category
+                    st.success(f"✅ {t('basic.generated_success', default='Generated')} {len(prompts)} {t('basic.prompts_available', default='prompts')}")
+                else:
+                    st.error(t("basic.generate_failed", default="Failed to generate prompts"))
+                    
+            except Exception as e:
+                st.error(f"{t('basic.error', default='Error')}: {str(e)}")
+    
+    # Display generated prompts
+    if "generated_prompts_new" in st.session_state and st.session_state.generated_prompts_new:
+        st.divider()
+        st.subheader(t("basic.generated_prompts", default="Generated Prompts"))
+        
+        col1, col2 = st.columns([3, 1])
+        with col2:
+            if st.button("💾 " + t("basic.save_all_btn", default="Save All"), use_container_width=True):
+                category = st.session_state.get("generated_category_new", "art")
+                saved_count = 0
+                for prompt in st.session_state.generated_prompts_new:
+                    if storage.add_prompt_to_category(category, prompt, language=current_lang):
+                        saved_count += 1
+                st.success(f"💾 {t('basic.saved_prompts', default='Saved')} {saved_count} {t('basic.prompts_available', default='prompts')}")
+                storage.clear_cache()
+                del st.session_state.generated_prompts_new
+                st.rerun()
+        
+        for idx, prompt_data in enumerate(st.session_state.generated_prompts_new):
+            with st.container(border=True):
+                prompt_text = prompt_data.get("prompt", "")
+                st.write(prompt_text)
+                
+                col1, col2, col3 = st.columns([2, 1, 1])
+                with col1:
+                    if st.button("✨", key=f"use_gen_new_{idx}", help=t("basic.use_prompt", default="Use"), use_container_width=True):
+                        st.session_state.prompt_input = prompt_text
+                        st.rerun()
+                with col2:
+                    if st.button("⭐", key=f"fav_gen_new_{idx}", help=t("basic.add_favorite", default="Favorite"), use_container_width=True):
+                        if storage.add_to_favorites(prompt_data):
+                            st.toast(t("basic.added_favorite", default="Added to favorites!"), icon="⭐")
+                with col3:
+                    if st.button("💾", key=f"save_gen_new_{idx}", help=t("basic.save_prompt", default="Save"), use_container_width=True):
+                        category = st.session_state.get("generated_category_new", "art")
+                        if storage.add_prompt_to_category(category, prompt_data, language=current_lang):
+                            st.toast(t("basic.saved_prompt", default="Saved!"), icon="💾")
+                            storage.clear_cache()
+
+
+def _render_ai_enhance_section(t: Translator, prompt_gen):
+    """Render AI prompt enhancement section."""
+    st.caption(t("basic.enhance_caption", default="Enhance your prompt with AI"))
+
+    # Get current prompt
+    current_prompt = st.session_state.get("prompt_input", "")
+
+    if not current_prompt.strip():
+        st.info(t("basic.enhance_hint", default="Enter a prompt below, then come back here to enhance it!"))
+        return
+
+    # Show current prompt
+    st.text_area(
+        t("basic.current_prompt", default="Current prompt"),
+        value=current_prompt,
+        height=60,
+        disabled=True,
+        key="enhance_current"
+    )
+
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        if st.button("✨ " + t("basic.enhance_btn", default="Enhance with AI"), use_container_width=True):
+            with st.spinner(t("basic.enhancing", default="Enhancing...")):
+                try:
+                    enhanced = prompt_gen.enhance_prompt(
+                        current_prompt,
+                        language=st.session_state.get("language", "en")
+                    )
+                    st.session_state.enhanced_prompt = enhanced
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {str(e)}")
+
+    with col2:
+        if st.button("🎲 " + t("basic.variations_btn", default="Generate Variations"), use_container_width=True):
+            with st.spinner(t("basic.generating_variations", default="Generating...")):
+                try:
+                    variations = prompt_gen.generate_variations(
+                        current_prompt,
+                        count=3,
+                        variation_type="style"
+                    )
+                    st.session_state.prompt_variations = variations
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {str(e)}")
+
+    # Show enhanced prompt
+    if "enhanced_prompt" in st.session_state and st.session_state.enhanced_prompt:
+        st.divider()
+        st.caption("✨ " + t("basic.enhanced_result", default="Enhanced prompt"))
+        enhanced = st.session_state.enhanced_prompt
+
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            st.success(enhanced)
+        with col2:
+            if st.button("📋", key="use_enhanced", help="Use enhanced prompt"):
+                st.session_state.prompt_input = enhanced
+                del st.session_state.enhanced_prompt
+                st.rerun()
+
+    # Show variations
+    if "prompt_variations" in st.session_state and st.session_state.prompt_variations:
+        st.divider()
+        st.caption("🎲 " + t("basic.variations_result", default="Variations"))
+        for idx, variation in enumerate(st.session_state.prompt_variations):
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                st.info(f"{idx + 1}. {variation}")
+            with col2:
+                if st.button("📋", key=f"use_var_{idx}", help="Use this variation"):
+                    st.session_state.prompt_input = variation
+                    del st.session_state.prompt_variations
+                    st.rerun()
