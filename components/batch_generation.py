@@ -196,6 +196,17 @@ def render_batch_generation(t: Translator, settings: dict, generator: ImageGener
     """
     # Initialize generation state
     GenerationStateManager.init_session_state()
+    
+    # Consume quota if needed (after rerun)
+    if "_quota_to_consume" in st.session_state:
+        quota_info = st.session_state._quota_to_consume
+        consume_quota_after_generation(
+            quota_info["mode"],
+            quota_info["resolution"],
+            quota_info["count"],
+            True
+        )
+        del st.session_state._quota_to_consume
 
     st.header(t("batch.title"))
     st.caption(t("batch.description"))
@@ -314,10 +325,14 @@ def render_batch_generation(t: Translator, settings: dict, generator: ImageGener
                     GenerationStateManager.complete_generation(result=results)
                     status.update(label=t("batch.complete"), state="complete", expanded=True)
                     
-                    # Consume trial quota for successful generations
+                    # Mark quota consumption needed (will be consumed after rerun)
                     successful_count = len([r for r in results if r.image is not None])
                     if successful_count > 0:
-                        consume_quota_after_generation("batch", settings["resolution"], successful_count, True)
+                        st.session_state._quota_to_consume = {
+                            "mode": "batch",
+                            "resolution": settings["resolution"],
+                            "count": successful_count
+                        }
 
                 except Exception as e:
                     GenerationStateManager.complete_generation(error=str(e))

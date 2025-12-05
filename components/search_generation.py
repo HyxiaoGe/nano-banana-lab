@@ -25,6 +25,17 @@ def render_search_generation(t: Translator, settings: dict, generator: ImageGene
     """
     # Initialize generation state
     GenerationStateManager.init_session_state()
+    
+    # Consume quota if needed (after rerun)
+    if "_quota_to_consume" in st.session_state:
+        quota_info = st.session_state._quota_to_consume
+        consume_quota_after_generation(
+            quota_info["mode"],
+            quota_info["resolution"],
+            quota_info["count"],
+            True
+        )
+        del st.session_state._quota_to_consume
 
     st.header(t("search.title"))
     st.caption(t("search.description"))
@@ -86,8 +97,12 @@ def render_search_generation(t: Translator, settings: dict, generator: ImageGene
                 icon = "🛡️" if result.safety_blocked else "❌"
                 st.error(f"{icon} {t('basic.error')}: {get_friendly_error_message(result.error, t)}")
             elif result.image:
-                # Consume trial quota if successful
-                consume_quota_after_generation("search", settings.get("resolution", "1K"), 1, True)
+                # Mark quota consumption needed (will be consumed after rerun)
+                st.session_state._quota_to_consume = {
+                    "mode": "search",
+                    "resolution": settings.get("resolution", "1K"),
+                    "count": 1
+                }
                 # Save to history using sync manager
                 history_sync = get_current_user_history_sync()
                 filename = history_sync.save_to_history(

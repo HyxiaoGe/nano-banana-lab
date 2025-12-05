@@ -306,9 +306,13 @@ class TrialQuotaService:
             r2 = get_r2_storage(user_id=None)
             
             if not r2.is_available:
+                print(f"[TrialQuota] R2 not available, cannot save quota")
                 return False
             
             key = f"quota/{self._get_quota_key()}.json"
+            
+            print(f"[TrialQuota] Saving quota to R2: {key}")
+            print(f"[TrialQuota] Data: {json.dumps(data, indent=2)}")
             
             r2._client.put_object(
                 Bucket=r2.bucket_name,
@@ -319,10 +323,14 @@ class TrialQuotaService:
                 Expires=datetime.now(timezone.utc).replace(hour=0, minute=0, second=0) + \
                         __import__('datetime').timedelta(days=2)
             )
+            
+            print(f"[TrialQuota] Successfully saved quota to R2")
             return True
             
         except Exception as e:
             print(f"[TrialQuota] Failed to save to KV: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def get_mode_key(self, mode: str, resolution: str = "1K") -> str:

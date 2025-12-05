@@ -122,9 +122,13 @@ def render_basic_generation(t: Translator, settings: dict, generator: ImageGener
                     error=result.error if result.error else None
                 )
                 
-                # Consume trial quota if successful
+                # Mark quota consumption needed (will be consumed after rerun)
                 if not result.error and result.image:
-                    consume_quota_after_generation("basic", gen_settings["resolution"], 1, True)
+                    st.session_state._quota_to_consume = {
+                        "mode": "basic",
+                        "resolution": gen_settings["resolution"],
+                        "count": 1
+                    }
 
             except Exception as e:
                 GenerationStateManager.complete_generation(error=str(e))
@@ -172,6 +176,17 @@ def render_basic_generation(t: Translator, settings: dict, generator: ImageGener
         # Rerun to update button state and show result
         st.rerun()
 
+    # Consume quota if needed (after rerun)
+    if "_quota_to_consume" in st.session_state:
+        quota_info = st.session_state._quota_to_consume
+        consume_quota_after_generation(
+            quota_info["mode"],
+            quota_info["resolution"],
+            quota_info["count"],
+            True
+        )
+        del st.session_state._quota_to_consume
+    
     # Show last generated image from current session (only for basic mode)
     elif not is_generating and "basic_last_result" in st.session_state and st.session_state.basic_last_result:
         _display_history_item(t, st.session_state.basic_last_result)

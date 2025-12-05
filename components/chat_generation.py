@@ -31,6 +31,17 @@ def render_chat_generation(t: Translator, settings: dict, chat_session: ChatSess
     st.header(t("chat.title"))
     st.caption(t("chat.description"))
 
+    # Consume quota if needed (after rerun)
+    if "_quota_to_consume" in st.session_state:
+        quota_info = st.session_state._quota_to_consume
+        consume_quota_after_generation(
+            quota_info["mode"],
+            quota_info["resolution"],
+            quota_info["count"],
+            True
+        )
+        del st.session_state._quota_to_consume
+    
     # Initialize chat messages in session state
     if "chat_messages" not in st.session_state:
         st.session_state.chat_messages = []
@@ -213,9 +224,13 @@ def render_chat_generation(t: Translator, settings: dict, chat_session: ChatSess
                         width="content"
                     )
 
-                # Consume trial quota if successful
+                # Mark quota consumption needed (will be consumed after rerun)
                 if response.image:
-                    consume_quota_after_generation("chat", settings.get("resolution", "1K"), 1, True)
+                    st.session_state._quota_to_consume = {
+                        "mode": "chat",
+                        "resolution": settings.get("resolution", "1K"),
+                        "count": 1
+                    }
                 
                 # Store in history using sync manager
                 if response.image:
