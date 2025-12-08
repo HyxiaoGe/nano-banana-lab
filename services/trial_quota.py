@@ -11,6 +11,26 @@ from dataclasses import dataclass
 import streamlit as st
 
 
+def get_config_value(key: str, default: str = "") -> str:
+    """
+    Get configuration value from multiple sources.
+    Priority: st.secrets > os.environ > default
+
+    Args:
+        key: Configuration key name
+        default: Default value if not found
+
+    Returns:
+        Configuration value as string
+    """
+    try:
+        if hasattr(st, 'secrets') and key in st.secrets:
+            return str(st.secrets[key])
+    except Exception:
+        pass
+    return os.getenv(key, default)
+
+
 @dataclass
 class QuotaConfig:
     """Configuration for quota limits per generation mode."""
@@ -24,13 +44,13 @@ class QuotaConfig:
 
 # ============ Load Configuration from Environment ============
 # Global daily quota pool (in points, where 1 point = 1 standard image)
-GLOBAL_DAILY_QUOTA = int(os.getenv("TRIAL_GLOBAL_QUOTA", "50"))
+GLOBAL_DAILY_QUOTA = int(get_config_value("TRIAL_GLOBAL_QUOTA", "50"))
 
 # Configuration mode: "auto" or "manual"
-QUOTA_CONFIG_MODE = os.getenv("TRIAL_QUOTA_MODE", "manual")
+QUOTA_CONFIG_MODE = get_config_value("TRIAL_QUOTA_MODE", "manual")
 
 # Cooldown between generations (seconds)
-GENERATION_COOLDOWN = int(os.getenv("TRIAL_COOLDOWN_SECONDS", "3"))
+GENERATION_COOLDOWN = int(get_config_value("TRIAL_COOLDOWN_SECONDS", "3"))
 
 # Base ratios for auto-scaling (when QUOTA_CONFIG_MODE = "auto")
 # These ratios determine how the global quota is distributed across modes
@@ -48,38 +68,38 @@ BASE_QUOTA_RATIOS = {
 # Load from environment variables with defaults
 MANUAL_QUOTA_CONFIGS = {
     "basic_1k": QuotaConfig(
-        cost=int(os.getenv("TRIAL_BASIC_1K_COST", "1")),
-        daily_limit=int(os.getenv("TRIAL_BASIC_1K_LIMIT", "30")),
+        cost=int(get_config_value("TRIAL_BASIC_1K_COST", "1")),
+        daily_limit=int(get_config_value("TRIAL_BASIC_1K_LIMIT", "30")),
         display_name="Basic (1K/2K)"
     ),
     "basic_4k": QuotaConfig(
-        cost=int(os.getenv("TRIAL_BASIC_4K_COST", "3")),
-        daily_limit=int(os.getenv("TRIAL_BASIC_4K_LIMIT", "10")),
+        cost=int(get_config_value("TRIAL_BASIC_4K_COST", "3")),
+        daily_limit=int(get_config_value("TRIAL_BASIC_4K_LIMIT", "10")),
         display_name="Basic (4K)"
     ),
     "chat": QuotaConfig(
-        cost=int(os.getenv("TRIAL_CHAT_COST", "1")),
-        daily_limit=int(os.getenv("TRIAL_CHAT_LIMIT", "20")),
+        cost=int(get_config_value("TRIAL_CHAT_COST", "1")),
+        daily_limit=int(get_config_value("TRIAL_CHAT_LIMIT", "20")),
         display_name="Chat"
     ),
     "batch_1k": QuotaConfig(
-        cost=int(os.getenv("TRIAL_BATCH_1K_COST", "1")),
-        daily_limit=int(os.getenv("TRIAL_BATCH_1K_LIMIT", "15")),
+        cost=int(get_config_value("TRIAL_BATCH_1K_COST", "1")),
+        daily_limit=int(get_config_value("TRIAL_BATCH_1K_LIMIT", "15")),
         display_name="Batch (1K/2K)"
     ),
     "batch_4k": QuotaConfig(
-        cost=int(os.getenv("TRIAL_BATCH_4K_COST", "3")),
-        daily_limit=int(os.getenv("TRIAL_BATCH_4K_LIMIT", "5")),
+        cost=int(get_config_value("TRIAL_BATCH_4K_COST", "3")),
+        daily_limit=int(get_config_value("TRIAL_BATCH_4K_LIMIT", "5")),
         display_name="Batch (4K)"
     ),
     "search": QuotaConfig(
-        cost=int(os.getenv("TRIAL_SEARCH_COST", "2")),
-        daily_limit=int(os.getenv("TRIAL_SEARCH_LIMIT", "15")),
+        cost=int(get_config_value("TRIAL_SEARCH_COST", "2")),
+        daily_limit=int(get_config_value("TRIAL_SEARCH_LIMIT", "15")),
         display_name="Search"
     ),
     "blend": QuotaConfig(
-        cost=int(os.getenv("TRIAL_BLEND_COST", "2")),
-        daily_limit=int(os.getenv("TRIAL_BLEND_LIMIT", "10")),
+        cost=int(get_config_value("TRIAL_BLEND_COST", "2")),
+        daily_limit=int(get_config_value("TRIAL_BLEND_LIMIT", "10")),
         display_name="Blend/Style"
     ),
 }
@@ -207,7 +227,7 @@ class TrialQuotaService:
             "R2_SECRET_ACCESS_KEY",
             "R2_BUCKET_NAME"
         ]
-        return all(os.getenv(var) for var in required_vars)
+        return all(get_config_value(var) for var in required_vars)
 
     def _init_session_fallback(self):
         """Initialize session state fallback storage."""
@@ -530,19 +550,19 @@ def get_trial_quota_service() -> TrialQuotaService:
 def is_trial_mode() -> bool:
     """
     Check if current user is in trial mode (no API key configured).
-    
+
     Returns:
         True if user is using trial mode
     """
     # Force trial mode for testing (set to True to always show quota)
-    FORCE_TRIAL_MODE = os.getenv("FORCE_TRIAL_MODE", "false").lower() == "true"
-    
+    FORCE_TRIAL_MODE = get_config_value("FORCE_TRIAL_MODE", "false").lower() == "true"
+
     if FORCE_TRIAL_MODE:
         return True
-    
+
     # Check if user has their own API key
     user_api_key = st.session_state.get("user_api_key", "")
-    env_api_key = os.getenv("GOOGLE_API_KEY", "")
-    
+    env_api_key = get_config_value("GOOGLE_API_KEY", "")
+
     # Trial mode if no API key is configured
     return not (user_api_key or env_api_key)
