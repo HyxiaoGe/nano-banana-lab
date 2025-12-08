@@ -207,6 +207,8 @@ def render_batch_generation(t: Translator, settings: dict, generator: ImageGener
             True
         )
         del st.session_state._quota_to_consume
+        # Rerun to update quota display in sidebar
+        st.rerun()
 
     st.header(t("batch.title"))
     st.caption(t("batch.description"))

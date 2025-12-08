@@ -37,6 +37,8 @@ def render_style_transfer(t: Translator, settings: dict, generator: ImageGenerat
             True
         )
         del st.session_state._quota_to_consume
+        # Rerun to update quota display in sidebar
+        st.rerun()
 
     st.header(t("blend.title"))
     st.caption(t("blend.description"))

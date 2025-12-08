@@ -41,6 +41,8 @@ def render_chat_generation(t: Translator, settings: dict, chat_session: ChatSess
             True
         )
         del st.session_state._quota_to_consume
+        # Rerun to update quota display in sidebar
+        st.rerun()
     
     # Initialize chat messages in session state
     if "chat_messages" not in st.session_state:

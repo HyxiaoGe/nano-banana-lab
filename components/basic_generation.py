@@ -186,6 +186,8 @@ def render_basic_generation(t: Translator, settings: dict, generator: ImageGener
             True
         )
         del st.session_state._quota_to_consume
+        # Rerun to update quota display in sidebar
+        st.rerun()
 
     # Show last generated image from current session (only for basic mode)
     if not is_generating and "basic_last_result" in st.session_state and st.session_state.basic_last_result:
