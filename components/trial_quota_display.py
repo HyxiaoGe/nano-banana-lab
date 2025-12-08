@@ -206,18 +206,24 @@ def consume_quota_after_generation(
 ):
     """
     Consume quota after successful generation.
-    
+
     Args:
         mode: Generation mode
         resolution: Image resolution
         count: Number of images generated
         success: Whether generation was successful
     """
+    print(f"[QuotaDebug] consume_quota_after_generation called: mode={mode}, resolution={resolution}, count={count}, success={success}")
+
     if not is_trial_mode():
+        print(f"[QuotaDebug] Not in trial mode, skipping quota consumption")
         return
-    
+
     if not success:
+        print(f"[QuotaDebug] Generation not successful, skipping quota consumption")
         return  # Don't consume quota if generation failed
-    
+
+    print(f"[QuotaDebug] Calling quota_service.consume_quota...")
     quota_service = get_trial_quota_service()
-    quota_service.consume_quota(mode, resolution, count)
+    result = quota_service.consume_quota(mode, resolution, count)
+    print(f"[QuotaDebug] consume_quota result: {result}")
