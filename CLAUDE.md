@@ -1,4 +1,6 @@
-# CLAUDE.md - AI Assistant Guide for Nano Banana Lab
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
@@ -11,6 +13,9 @@
 - Image blending and style transfer
 - Search-grounded generation with real-time data integration
 - Complete bilingual support (English and Chinese)
+- **Trial Mode** - Shared quota system for users without API keys (NEW)
+- **GitHub OAuth** - User authentication with data isolation (NEW)
+- **AI Prompt Library** - AI-powered prompt generation with favorites and cloud sync (NEW)
 
 ## Architecture
 
@@ -69,7 +74,11 @@ nano-banana-lab/
 │   ├── persistence.py
 │   ├── generation_state.py
 │   ├── history_sync.py
-│   └── health_check.py
+│   ├── health_check.py
+│   ├── auth.py            # GitHub OAuth authentication
+│   ├── trial_quota.py     # Trial mode quota management
+│   ├── prompt_generator.py # AI-powered prompt generation
+│   └── prompt_storage.py  # Prompt library storage
 ├── i18n/                  # Internationalization
 │   ├── __init__.py        # Translator class
 │   ├── en.json            # English translations
@@ -81,6 +90,10 @@ nano-banana-lab/
 │   ├── 04_4k.py
 │   ├── 05_multilang.py
 │   └── 06_blend.py
+├── scripts/               # Utility scripts
+│   ├── init_prompts.py    # Initialize prompt library with AI
+│   ├── test_prompts.py    # Test prompt generation
+│   └── preview_prompts.py # Preview prompt templates
 ├── utils/
 │   └── async_helper.py    # Async/event loop management
 ├── outputs/               # Generated images directory
@@ -107,6 +120,12 @@ python experiments/04_4k.py
 python experiments/05_multilang.py
 python experiments/06_blend.py
 
+# Initialize prompt library with AI-generated prompts
+python scripts/init_prompts.py
+
+# Test prompt generation
+python scripts/test_prompts.py
+
 # Docker local development
 docker-compose up -d
 
@@ -129,8 +148,11 @@ pip install -r requirements.txt
 | boto3 | >=1.34.0 | Cloudflare R2 storage (S3-compatible) |
 | python-dotenv | >=1.0.0 | Environment variable management |
 | extra-streamlit-components | >=0.1.60 | Cookie management |
+| streamlit-oauth | >=0.1.8 | GitHub OAuth authentication |
 
-**AI Model:** `gemini-3-pro-image-preview` (image generation), `gemini-2.0-flash` (health checks)
+**AI Models:**
+- `gemini-3-pro-image-preview` - Image generation
+- `gemini-2.0-flash` - Health checks and prompt generation
 
 ## Environment Variables
 
@@ -147,6 +169,29 @@ R2_ACCESS_KEY_ID            # R2 access key
 R2_SECRET_ACCESS_KEY        # R2 secret key
 R2_BUCKET_NAME              # S3 bucket name (default: nano-banana-images)
 R2_PUBLIC_URL               # Public URL for images
+```
+
+Optional - GitHub OAuth:
+```
+GITHUB_CLIENT_ID            # GitHub OAuth app client ID
+GITHUB_CLIENT_SECRET        # GitHub OAuth app client secret
+GITHUB_REDIRECT_URI         # OAuth callback URL (default: http://localhost:8501)
+```
+
+Optional - Trial Mode (for users without API keys):
+```
+TRIAL_ENABLED               # Enable trial mode (true/false, default: false)
+TRIAL_GLOBAL_QUOTA          # Global daily quota pool (default: 50)
+TRIAL_QUOTA_MODE            # Configuration mode: "auto" or "manual" (default: "manual")
+TRIAL_COOLDOWN_SECONDS      # Seconds between generations (default: 3)
+# Manual quota limits per mode (when TRIAL_QUOTA_MODE=manual)
+TRIAL_BASIC_1K_LIMIT        # Daily limit for basic 1K/2K (default: 30)
+TRIAL_BASIC_4K_LIMIT        # Daily limit for basic 4K (default: 5)
+TRIAL_CHAT_LIMIT            # Daily limit for chat (default: 20)
+TRIAL_BATCH_1K_LIMIT        # Daily limit for batch 1K/2K (default: 15)
+TRIAL_BATCH_4K_LIMIT        # Daily limit for batch 4K (default: 3)
+TRIAL_SEARCH_LIMIT          # Daily limit for search (default: 15)
+TRIAL_BLEND_LIMIT           # Daily limit for blend/style (default: 10)
 ```
 
 Optional - Defaults:
@@ -213,6 +258,10 @@ text = t.get("sidebar.api_key.title")
 | `services/chat_session.py` | `ChatSession` for multi-turn conversations |
 | `services/persistence.py` | Browser cookie-based persistence |
 | `services/r2_storage.py` | Cloudflare R2 cloud storage integration |
+| `services/auth.py` | GitHub OAuth authentication service |
+| `services/trial_quota.py` | Trial mode quota tracking and enforcement |
+| `services/prompt_generator.py` | AI-powered prompt generation using Gemini |
+| `services/prompt_storage.py` | Prompt library storage with R2 sync |
 | `components/sidebar.py` | Settings panel, API key management |
 
 ## API Configuration
@@ -260,6 +309,25 @@ streamlit run app.py --server.port=$PORT --server.address=0.0.0.0
 curl --fail http://localhost:8501/_stcore/health
 ```
 
+## Authentication & User Isolation
+
+**GitHub OAuth Flow:**
+- Implemented via `services/auth.py` using `streamlit-oauth`
+- User data stored with unique folder IDs (hash of GitHub user ID)
+- R2 storage paths: `{user_folder_id}/images/` and `{user_folder_id}/prompts/`
+- Session management via Streamlit session state
+
+**Trial Mode:**
+- When `TRIAL_ENABLED=true` and no API key provided, users get shared quota
+- Quota tracked via `services/trial_quota.py` with Cloudflare KV storage
+- Daily reset, per-mode limits, and global quota pool
+- Cooldown enforcement between generations
+
+**Data Isolation:**
+- Authenticated users: Data stored in user-specific folders in R2
+- Trial users: Shared quota, no persistent data
+- API key users: Local storage or user-specific R2 folders
+
 ## Common Tasks
 
 ### Adding a New UI Component
@@ -268,6 +336,7 @@ curl --fail http://localhost:8501/_stcore/health
 3. Export from `components/__init__.py`
 4. Add mode option in `app.py`
 5. Add translations in `i18n/en.json` and `i18n/zh.json`
+6. If trial mode is supported, add quota checks via `check_and_show_quota_warning()`
 
 ### Adding New Translations
 1. Add keys to both `i18n/en.json` and `i18n/zh.json`
@@ -285,6 +354,12 @@ Core generation logic is in `services/generator.py`:
 2. Implement service class with singleton getter
 3. Export from `services/__init__.py`
 4. Initialize in `app.py` if needed at startup
+
+### Working with Prompts
+Scripts for prompt library management:
+- `scripts/init_prompts.py` - Bulk generate prompts using AI
+- `scripts/test_prompts.py` - Test prompt generation and storage
+- `scripts/preview_prompts.py` - Preview existing prompt templates
 
 ## Error Handling
 
@@ -327,6 +402,10 @@ The codebase has comprehensive error handling for API calls:
 - **Search**: Filter by prompt text
 - **Mode Filter**: Filter by generation mode (basic, chat, batch, etc.)
 - **Image Preview**: Click 🔍 to open full-size preview with details
+- **Sorting**: Sort by date (newest/oldest first)
+- **Date Filtering**: Filter images by date range
+- **Grid Layout**: Toggle between compact and spacious views
+- **Data Source**: Switch between local and R2 storage
 
 ### Chat Mode
 - **Clear Confirmation**: Prevents accidental chat deletion
@@ -334,8 +413,23 @@ The codebase has comprehensive error handling for API calls:
 - **Message Count**: Shows current conversation length
 - **Empty State**: Helpful guidance for new users
 
+### Prompt Library (Templates)
+- **AI Generation**: Generate prompts with Gemini Flash
+- **Categories**: Organize by portrait, landscape, food, abstract, etc.
+- **Favorites**: Star/unstar prompts for quick access
+- **Search**: Filter prompts by keywords
+- **Cloud Sync**: Optional R2 sync for authenticated users
+- **Use Button**: One-click copy to generation modes
+
+### Trial Mode UI
+- **Quota Display**: Real-time quota usage tracking
+- **Per-Mode Limits**: Show remaining quota for each generation mode
+- **Cooldown Timer**: Visual countdown between generations
+- **Warning Dialogs**: Prevent usage when quota exhausted
+
 ### Empty States
 All modes show helpful guidance when no content exists:
 - Tips for better prompts in Basic Generation
 - Quick start instructions in Chat mode
 - Navigation hints in History
+- Prompt library introduction in Templates
